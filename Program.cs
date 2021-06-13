@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace ObfuscatorXOR
 {
@@ -35,12 +34,38 @@ namespace ObfuscatorXOR
             return mixed;
         }
 
+        static byte[] Encrypt(string plainText, byte[] Key, byte[] IV)
+        {
+            byte[] encrypted;
+            // Create a new AesManaged.    
+            using (AesManaged aes = new AesManaged())
+            {
+                // Create encryptor    
+                ICryptoTransform encryptor = aes.CreateEncryptor(Key, IV);
+                // Create MemoryStream    
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    // Create crypto stream using the CryptoStream class. This class is the key to encryption    
+                    // and encrypts and decrypts data from any given stream. In this case, we will pass a memory stream    
+                    // to encrypt    
+                    using (CryptoStream cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                    {
+                        // Create StreamWriter and write data to a stream    
+                        using (StreamWriter sw = new StreamWriter(cs))
+                            sw.Write(plainText);
+                        encrypted = ms.ToArray();
+                    }
+                }
+            }
+            // Return encrypted data    
+            return encrypted;
+        }
+
         static void Main(string[] args)
         {
 
             // get file path
 
-            string base64String = "";
             string filePath = "";
             if (args.Count() > 0) // if arg exists
             {
@@ -55,22 +80,18 @@ namespace ObfuscatorXOR
             }
 
             //check if its base64 encoded
-            base64String = File.ReadAllText(filePath);
+            string base64String = File.ReadAllText(filePath);
 
             if (!IsBase64String(base64String))
             {
                 Console.WriteLine("[!] Make sure that it is a base64 string");
             }else
             {
-                //string decoded = Encoding.UTF8.GetString(Convert.FromBase64String(base64String)); //convert b64 to bytes shellcode
+                var xorKey = "SuperSecureKey".ToString();
 
-                //var xorEncString = xorEncDec(Encoding.UTF8.GetBytes(decoded), xorKey);
+                byte[] xorEncString = xorEncDec(Convert.FromBase64String(base64String), xorKey); //encrypt
 
-                var xorKey = "lovely".ToString();
-
-                var xorEncString = xorEncDec(Convert.FromBase64String(base64String), xorKey); //encrypt
-
-                var xorEncStringB64 = Convert.ToBase64String(xorEncString);
+                string xorEncStringB64 = Convert.ToBase64String(xorEncString);
 
                 Console.WriteLine($"XOR encrypted text: {xorEncStringB64}");
 
@@ -90,15 +111,16 @@ namespace ObfuscatorXOR
 
                 // Open template file
                 var templateFile = Path.Combine(Directory.GetCurrentDirectory(), "template.cs");
+                var outputFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
                 // read all content
                 string templateFileContent = File.ReadAllText(templateFile);
                 // replace "string xoredB64" line
                 templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorEncStringB64);
                 // write all back into the file
-                File.WriteAllText("template.cs", templateFileContent);
+                File.WriteAllText(outputFile, templateFileContent);
 
                 //compile the code
-                string strCmd = "/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe "+ templateFile;
+                string strCmd = "/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe "+ outputFile;
                 System.Diagnostics.Process.Start("CMD.exe", strCmd);
             }
         }
