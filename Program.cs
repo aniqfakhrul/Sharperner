@@ -175,7 +175,7 @@ namespace ObfuscatorXOR
                         WebClient client = new WebClient();
                         try
                         {
-                            templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/XORed-ProcessInjection/main/bin/Debug/template.cs");
+                            templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/XORed-ProcessInjection/main/templates.cs");
                         }
                         catch
                         {
