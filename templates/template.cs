@@ -167,6 +167,7 @@ namespace beacon
             return mixed;
         }
 
+        //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
         public static string DecryptStringFromBytes(byte[] cipherText, byte[] Key, byte[] IV)
         {
             // Check arguments.

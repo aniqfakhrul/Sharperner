@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{63FCAA07-43F5-4BFA-8427-D2863D792200}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ObfuscatorXOR</RootNamespace>
-    <AssemblyName>ObfuscatorXOR</AssemblyName>
+    <RootNamespace>Sharperner</RootNamespace>
+    <AssemblyName>Sharperner</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>

@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Text.RegularExpressions;
 
-namespace ObfuscatorXOR
+namespace Sharperner
 {
     class Program
     {
@@ -100,6 +100,10 @@ namespace ObfuscatorXOR
 /file       B64 shellcode file
 /key        XOR Key (Optional)
 /out        Output file Location (Optional)
+
+Example:
+Sharperner.exe /file:file.txt
+Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
 ";
             Console.WriteLine(help);
         }
@@ -110,6 +114,7 @@ namespace ObfuscatorXOR
             string xorKey = "Sup3rS3cur3K3yfTw!";
             string filePath;
             string outputFile = "";
+            string xorAesEncStringB64 = "";
 
             banner();
 
@@ -174,13 +179,23 @@ namespace ObfuscatorXOR
                     byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
                     byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
 
-                    // AES Encrypt
-                    byte[] aesEncByte = EncryptStringToBytes(base64String, key, iv);
+                    try
+                    {
+                        // AES Encrypt
+                        byte[] aesEncByte = EncryptStringToBytes(base64String, key, iv);
 
-                    // XOR
-                    byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey); 
+                        // XOR
+                        byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
 
-                    string xorAesEncStringB64 = Convert.ToBase64String(xorAesEncByte);
+                        xorAesEncStringB64 = Convert.ToBase64String(xorAesEncByte);
+
+                        Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
+                    }
+                    catch
+                    {
+                        Console.WriteLine("[!] Error encrypting");
+                    }
+
 
                     //Console.WriteLine($"XOR encrypted text: {xorAesEncStringB64}");
 
@@ -191,11 +206,11 @@ namespace ObfuscatorXOR
                     //Console.WriteLine($"XOR decrypted text: {decrypted}");
 
                     // Write the file
-                    string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "payload.xor.b64");
+                    string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "payload.dec");
 
                     using (StreamWriter writer = new StreamWriter(fullPath))
                     {
-                        Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath}");
+                        Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath} just in case you need it");
                         writer.WriteLine(xorAesEncStringB64);
                     }
 
@@ -245,7 +260,7 @@ namespace ObfuscatorXOR
                     try
                     {
                         System.Diagnostics.Process.Start("CMD.exe", strCmd);
-                        Console.WriteLine("[+] Executable file successfully generated.");
+                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
                     }
                     catch (Exception err)
                     {
@@ -254,7 +269,7 @@ namespace ObfuscatorXOR
 
                     Console.WriteLine($"[+] Doing some cleaning...");
                     Thread.Sleep(1000);
-                    //File.Delete(tempFile);
+                    File.Delete(tempFile);
                 }
             }
 
