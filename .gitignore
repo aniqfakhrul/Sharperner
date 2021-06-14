@@ -1,2 +1,6 @@
 .vs
-bin/Debug/ObfuscatorXOR.exe*
+*.user
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bject/

