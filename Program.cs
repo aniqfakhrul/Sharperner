@@ -37,6 +37,49 @@ namespace ObfuscatorXOR
             return mixed;
         }
 
+        //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
+        public static byte[] EncryptStringToBytes(string plainText, byte[] Key, byte[] IV)
+        {
+            // Check arguments.
+            if (plainText == null || plainText.Length <= 0)
+                throw new ArgumentNullException("plainText");
+            if (Key == null || Key.Length <= 0)
+                throw new ArgumentNullException("Key");
+            if (IV == null || IV.Length <= 0)
+                throw new ArgumentNullException("Key");
+            byte[] encrypted;
+            // Create an RijndaelManaged object
+            // with the specified key and IV.
+            using (RijndaelManaged rijAlg = new RijndaelManaged())
+            {
+                rijAlg.Key = Key;
+                rijAlg.IV = IV;
+
+                // Create a decrytor to perform the stream transform.
+                ICryptoTransform encryptor = rijAlg.CreateEncryptor(rijAlg.Key, rijAlg.IV);
+
+                // Create the streams used for encryption.
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                        {
+
+                            //Write all data to the stream.
+                            swEncrypt.Write(plainText);
+                        }
+                        encrypted = msEncrypt.ToArray();
+                    }
+                }
+            }
+
+
+            // Return the encrypted bytes from the memory stream.
+            return encrypted;
+
+        }
+
         public static void banner()
         {
             string banner = @"
@@ -127,15 +170,23 @@ namespace ObfuscatorXOR
                 }
                 else
                 {
-                    byte[] xorEncString = xorEncDec(Convert.FromBase64String(base64String), xorKey); //XOR encrypt
+                    //aes encode
+                    byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
+                    byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
 
-                    string xorEncStringB64 = Convert.ToBase64String(xorEncString);
+                    // AES Encrypt
+                    byte[] aesEncByte = EncryptStringToBytes(base64String, key, iv);
 
-                    //Console.WriteLine($"XOR encrypted text: {xorEncStringB64}");
+                    // XOR
+                    byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey); 
+
+                    string xorAesEncStringB64 = Convert.ToBase64String(xorAesEncByte);
+
+                    //Console.WriteLine($"XOR encrypted text: {xorAesEncStringB64}");
 
                     //decrypt it back
 
-                    //var decrypted = Convert.ToBase64String(xorEncDec((Convert.FromBase64String(xorEncStringB64)), xorKey));
+                    //var decrypted = DecryptStringFromBytes(xorEncDec(Convert.FromBase64String(xorAesEncStringB64), xorKey),key,iv);
 
                     //Console.WriteLine($"XOR decrypted text: {decrypted}");
 
@@ -145,7 +196,7 @@ namespace ObfuscatorXOR
                     using (StreamWriter writer = new StreamWriter(fullPath))
                     {
                         Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath}");
-                        writer.WriteLine(xorEncStringB64);
+                        writer.WriteLine(xorAesEncStringB64);
                     }
 
                     // Open template file
@@ -177,7 +228,7 @@ namespace ObfuscatorXOR
                         templateFileContent = File.ReadAllText(templateFile);
                     }
                     // replace "string xoredB64" line
-                    templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorEncStringB64).Replace("REPLACE XORKEY",xorKey);
+                    templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY",xorKey);
                     // write all back into the file
                     try
                     {
@@ -203,7 +254,7 @@ namespace ObfuscatorXOR
 
                     Console.WriteLine($"[+] Doing some cleaning...");
                     Thread.Sleep(1000);
-                    File.Delete(tempFile);
+                    //File.Delete(tempFile);
                 }
             }
 

