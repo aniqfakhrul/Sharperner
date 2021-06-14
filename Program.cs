@@ -37,43 +37,16 @@ namespace ObfuscatorXOR
             return mixed;
         }
 
-        static byte[] Encrypt(string plainText, byte[] Key, byte[] IV)
-        {
-            byte[] encrypted;
-            // Create a new AesManaged.    
-            using (AesManaged aes = new AesManaged())
-            {
-                // Create encryptor    
-                ICryptoTransform encryptor = aes.CreateEncryptor(Key, IV);
-                // Create MemoryStream    
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    // Create crypto stream using the CryptoStream class. This class is the key to encryption    
-                    // and encrypts and decrypts data from any given stream. In this case, we will pass a memory stream    
-                    // to encrypt    
-                    using (CryptoStream cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-                    {
-                        // Create StreamWriter and write data to a stream    
-                        using (StreamWriter sw = new StreamWriter(cs))
-                            sw.Write(plainText);
-                        encrypted = ms.ToArray();
-                    }
-                }
-            }
-            // Return encrypted data    
-            return encrypted;
-        }
-
         public static void banner()
         {
             string banner = @"
-███████╗██╗  ██╗ █████╗ ██████╗ ██████╗ ███████╗██████╗ ███╗   ██╗███████╗██████╗ 
-██╔════╝██║  ██║██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗████╗  ██║██╔════╝██╔══██╗
-███████╗███████║███████║██████╔╝██████╔╝█████╗  ██████╔╝██╔██╗ ██║█████╗  ██████╔╝
-╚════██║██╔══██║██╔══██║██╔══██╗██╔═══╝ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██╔══██╗
-███████║██║  ██║██║  ██║██║  ██║██║     ███████╗██║  ██║██║ ╚████║███████╗██║  ██║
-╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝
-
+  _____  _      ___                                     _    _ _____  ______  
+ / ___ \| |    / __)                      _            \ \  / / ___ \(_____ \ 
+| |   | | | _ | |__ _   _  ___  ____ ____| |_  ___   ___\ \/ / |   | |_____) )
+| |   | | || \|  __) | | |/___)/ ___) _  |  _)/ _ \ / ___)  (| |   | (_____ ( 
+| |___| | |_) ) |  | |_| |___ ( (__( ( | | |_| |_| | |  / /\ \ |___| |     | |
+ \_____/|____/|_|   \____(___/ \____)_||_|\___)___/|_| /_/  \_\_____/      |_|
+                                                                              
 ";
             Console.WriteLine(banner);
         }
@@ -230,7 +203,7 @@ namespace ObfuscatorXOR
 
                     Console.WriteLine($"[+] Doing some cleaning...");
                     Thread.Sleep(1000);
-                    //File.Delete(tempFile);
+                    File.Delete(tempFile);
                 }
             }
 
