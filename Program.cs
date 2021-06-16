@@ -145,7 +145,7 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
             string filePath;
             string outputFile = "";
             string xorAesEncStringB64 = "";
-            byte[] rawshellcode = new byte[] { };
+            byte[] rawSh3lLc0d3 = new byte[] { };
             byte[] aesEncByte = new byte[] { };
             byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
             byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
@@ -183,21 +183,21 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                         if(IsHex(File.ReadAllText(filePath)))
                         {
                             Console.WriteLine("[+] Hex payload detected.");
-                            rawshellcode = StringToByteArray(File.ReadAllText(filePath));
-                            aesEncByte = AESEncrypt(rawshellcode, key, iv);
+                            rawSh3lLc0d3 = StringToByteArray(File.ReadAllText(filePath));
+                            aesEncByte = AESEncrypt(rawSh3lLc0d3, key, iv);
                         }
                         else if (isBinary(filePath))
                         {
                             Console.WriteLine("[+] Raw payload detected.");
-                            rawshellcode = File.ReadAllBytes(filePath);
-                            aesEncByte = AESEncrypt(rawshellcode, key, iv);
+                            rawSh3lLc0d3 = File.ReadAllBytes(filePath);
+                            aesEncByte = AESEncrypt(rawSh3lLc0d3, key, iv);
                         }
                         else if (IsBase64String(File.ReadAllText(filePath)))
                         {
                             Console.WriteLine("[+] Base64 input detected. Converting base64 to bytes");
                             base64String = File.ReadAllText(filePath);
-                            rawshellcode = Convert.FromBase64String(base64String);
-                            aesEncByte = AESEncrypt(rawshellcode, key, iv);
+                            rawSh3lLc0d3 = Convert.FromBase64String(base64String);
+                            aesEncByte = AESEncrypt(rawSh3lLc0d3, key, iv);
                         }
                         else
                         {
@@ -294,7 +294,7 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 // write all back into the file
                 try
                 {
-                    Console.WriteLine("[+] Wrtiting shellcode to template file...");
+                    Console.WriteLine("[+] Writing shellcode to template file...");
                     File.WriteAllText(tempFile, templateFileContent);
                 }
                 catch (Exception err)
