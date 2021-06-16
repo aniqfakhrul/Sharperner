@@ -127,7 +127,7 @@ by @ch4rm with <3
         public static void help()
         {
             string help = @"
-/file       B64 shellcode file
+/file       B64/hex/raw shellcode
 /key        XOR Key (Optional)
 /out        Output file Location (Optional)
 
