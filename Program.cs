@@ -18,6 +18,13 @@ namespace Sharperner
             return (base64.Length % 4 == 0) && Regex.IsMatch(base64, @"^[a-zA-Z0-9\+/]*={0,3}$", RegexOptions.None);
         }
 
+        public static bool IsHex(String s)
+        {
+            string strHex = String.Concat("[0-9A-Fa-f]{", s.Length, "}");
+            bool RetBoolHex = Regex.IsMatch(s, strHex);
+            return RetBoolHex;
+        }
+
         private static Random random = new Random();
         public static string RandomKey(int length)
         {
@@ -37,47 +44,70 @@ namespace Sharperner
             return mixed;
         }
 
-        //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
-        public static byte[] EncryptStringToBytes(string plainText, byte[] Key, byte[] IV)
+        public static bool isBinary(string path)
         {
-            // Check arguments.
-            if (plainText == null || plainText.Length <= 0)
-                throw new ArgumentNullException("plainText");
-            if (Key == null || Key.Length <= 0)
-                throw new ArgumentNullException("Key");
-            if (IV == null || IV.Length <= 0)
-                throw new ArgumentNullException("Key");
-            byte[] encrypted;
-            // Create an RijndaelManaged object
-            // with the specified key and IV.
-            using (RijndaelManaged rijAlg = new RijndaelManaged())
+            long length = new FileInfo(path).Length;
+            if (length == 0) return false;
+
+            using (StreamReader stream = new StreamReader(path))
             {
-                rijAlg.Key = Key;
-                rijAlg.IV = IV;
-
-                // Create a decrytor to perform the stream transform.
-                ICryptoTransform encryptor = rijAlg.CreateEncryptor(rijAlg.Key, rijAlg.IV);
-
-                // Create the streams used for encryption.
-                using (MemoryStream msEncrypt = new MemoryStream())
+                int ch;
+                while ((ch = stream.Read()) != -1)
                 {
-                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    if (isControlChar(ch))
                     {
-                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
-                        {
-
-                            //Write all data to the stream.
-                            swEncrypt.Write(plainText);
-                        }
-                        encrypted = msEncrypt.ToArray();
+                        return true;
                     }
                 }
             }
+            return false;
+        }
 
+        public static bool isControlChar(int ch)
+        {
+            return (ch > Chars.NUL && ch < Chars.BS)
+                || (ch > Chars.CR && ch < Chars.SUB);
+        }
 
-            // Return the encrypted bytes from the memory stream.
-            return encrypted;
+        public static class Chars
+        {
+            public static char NUL = (char)0; // Null char
+            public static char BS = (char)8; // Back Space
+            public static char CR = (char)13; // Carriage Return
+            public static char SUB = (char)26; // Substitute
+        }
 
+        //https://www.codeproject.com/Articles/5719/Simple-encrypting-and-decrypting-data-in-C
+        //https://gist.github.com/RichardHan/0848a25d9466a21f1f38
+        public static byte[] AESEncrypt(byte[] clearData, byte[] Key, byte[] IV)
+        {
+            MemoryStream ms = new MemoryStream();
+
+            Rijndael alg = Rijndael.Create();
+
+            alg.Key = Key;
+            alg.IV = IV;
+
+            CryptoStream cs = new CryptoStream(ms,
+               alg.CreateEncryptor(), CryptoStreamMode.Write);
+
+            // Write the data and make it do the encryption 
+            cs.Write(clearData, 0, clearData.Length);
+
+            cs.Close();
+
+            byte[] encryptedData = ms.ToArray();
+
+            return encryptedData;
+        }
+
+        //https://stackoverflow.com/questions/321370/how-can-i-convert-a-hex-string-to-a-byte-array
+        public static byte[] StringToByteArray(string hex)
+        {
+            return Enumerable.Range(0, hex.Length)
+                             .Where(x => x % 2 == 0)
+                             .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))
+                             .ToArray();
         }
 
         public static void banner()
@@ -90,7 +120,6 @@ namespace Sharperner
 ███████║██║  ██║██║  ██║██║  ██║██║     ███████╗██║  ██║██║ ╚████║███████╗██║  ██║
 ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  
 by @ch4rm with <3
-
 ";
             Console.WriteLine(banner);
         }
@@ -116,6 +145,10 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
             string filePath;
             string outputFile = "";
             string xorAesEncStringB64 = "";
+            byte[] rawshellcode = new byte[] { };
+            byte[] aesEncByte = new byte[] { };
+            byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
+            byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
 
             banner();
 
@@ -145,7 +178,45 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 }
                 else
                 {
-                    base64String = File.ReadAllText(filePath);
+                    try
+                    {
+                        if(IsHex(File.ReadAllText(filePath)))
+                        {
+                            Console.WriteLine("[+] Hex payload detected.");
+                            rawshellcode = StringToByteArray(File.ReadAllText(filePath));
+                            aesEncByte = AESEncrypt(rawshellcode, key, iv);
+                        }
+                        else if (isBinary(filePath))
+                        {
+                            Console.WriteLine("[+] Raw payload detected.");
+                            rawshellcode = File.ReadAllBytes(filePath);
+                            aesEncByte = AESEncrypt(rawshellcode, key, iv);
+                        }
+                        else if (IsBase64String(File.ReadAllText(filePath)))
+                        {
+                            Console.WriteLine("[+] Base64 input detected. Converting base64 to bytes");
+                            base64String = File.ReadAllText(filePath);
+                            rawshellcode = Convert.FromBase64String(base64String);
+                            aesEncByte = AESEncrypt(rawshellcode, key, iv);
+                        }
+                        else
+                        {
+                            Console.WriteLine("[!] Couldn't detect file input content.");
+                            Environment.Exit(0);
+                        }
+
+                        // XOR
+                        byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
+
+                        xorAesEncStringB64 = Convert.ToBase64String(xorAesEncByte);
+
+                        Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
+                    }
+                    catch
+                    {
+                        Console.WriteLine("[!] Error encrypting");
+                    }
+
                 }
 
                 if (arguments.ContainsKey("/key"))
@@ -170,111 +241,83 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                     outputFile = "payload.exe";
                 }
 
-                if (!IsBase64String(base64String))
-                {
-                    Console.WriteLine("[!] Make sure that it is a base64 encoded payload");
-                }
-                else
-                {
-                    //aes encode
-                    byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
-                    byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
 
+                //Console.WriteLine($"XOR encrypted text: {xorAesEncStringB64}");
+
+                //decrypt it back
+
+                //byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xorAesEncStringB64), xorKey);
+
+                //string sh3Llc0d3 = DecryptStringFromBytes(aesEncrypted, key, iv);
+
+                //Console.WriteLine($"XOR decrypted text: {sh3Llc0d3}");
+
+                // Write the file
+                string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "payload.dec");
+
+                using (StreamWriter writer = new StreamWriter(fullPath))
+                {
+                    Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath} just in case you need it");
+                    writer.WriteLine(xorAesEncStringB64);
+                }
+
+                // Open template file
+                var parentDir = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName;
+                var templateFile = Path.Combine(parentDir, "templates/template.cs");
+                var tempFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
+
+                string templateFileContent = "";
+
+                // read all content
+                if (!File.Exists(templateFile)) //if file exists
+                {
+                    Console.WriteLine("[!] File does not exists in local, fetching online...");
+                    ServicePointManager.Expect100Continue = true;
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                    WebClient client = new WebClient();
                     try
                     {
-                        // AES Encrypt
-                        byte[] aesEncByte = EncryptStringToBytes(base64String, key, iv);
-
-                        // XOR
-                        byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
-
-                        xorAesEncStringB64 = Convert.ToBase64String(xorAesEncByte);
-
-                        Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
+                        templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/template.cs");
                     }
                     catch
                     {
-                        Console.WriteLine("[!] Error encrypting");
+                        Console.WriteLine("[!] No internet connection");
+                        Environment.Exit(0);
                     }
-
-
-                    //Console.WriteLine($"XOR encrypted text: {xorAesEncStringB64}");
-
-                    //decrypt it back
-
-                    //var decrypted = DecryptStringFromBytes(xorEncDec(Convert.FromBase64String(xorAesEncStringB64), xorKey),key,iv);
-
-                    //Console.WriteLine($"XOR decrypted text: {decrypted}");
-
-                    // Write the file
-                    string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "payload.dec");
-
-                    using (StreamWriter writer = new StreamWriter(fullPath))
-                    {
-                        Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath} just in case you need it");
-                        writer.WriteLine(xorAesEncStringB64);
-                    }
-
-                    // Open template file
-                    var parentDir = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName;
-                    var templateFile = Path.Combine(parentDir, "templates/template.cs");
-                    var tempFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
-
-                    string templateFileContent = "";
-
-                    // read all content
-                    if (!File.Exists(templateFile)) //if file exists
-                    {
-                        Console.WriteLine("[!] File does not exists in local, fetching online...");
-                        ServicePointManager.Expect100Continue = true;
-                        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                        WebClient client = new WebClient();
-                        try
-                        {
-                            templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/XORed-ProcessInjection/main/template.cs");
-                        }
-                        catch
-                        {
-                            Console.WriteLine("[!] No internet connection");
-                            Environment.Exit(0);
-                        }
-                    }
-                    else
-                    {
-                        templateFileContent = File.ReadAllText(templateFile);
-                    }
-                    // replace "string xoredB64" line
-                    templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY",xorKey);
-                    // write all back into the file
-                    try
-                    {
-                        Console.WriteLine("[+] Wrtiting shellcode to template file...");
-                        File.WriteAllText(tempFile, templateFileContent);
-                    }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
-                    }
-
-                    //compile the code
-                    string strCmd = $"/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /out:{outputFile} {tempFile}";
-                    try
-                    {
-                        System.Diagnostics.Process.Start("CMD.exe", strCmd);
-                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
-                    }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine($"[!] Error generating executable file with the following error {err.Message}");
-                    }
-
-                    Console.WriteLine($"[+] Doing some cleaning...");
-                    Thread.Sleep(1000);
-                    File.Delete(tempFile);
                 }
+                else
+                {
+                    templateFileContent = File.ReadAllText(templateFile);
+                }
+                // replace "string xoredB64" line
+                templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY",xorKey);
+                // write all back into the file
+                try
+                {
+                    Console.WriteLine("[+] Wrtiting shellcode to template file...");
+                    File.WriteAllText(tempFile, templateFileContent);
+                }
+                catch (Exception err)
+                {
+                    Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
+                }
+
+                //compile the code
+                string strCmd = $"/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /out:{outputFile} {tempFile}";
+                try
+                {
+                    System.Diagnostics.Process.Start("CMD.exe", strCmd);
+                    Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                }
+                catch (Exception err)
+                {
+                    Console.WriteLine($"[!] Error generating executable file with the following error {err.Message}");
+                }
+
+                Console.WriteLine($"[+] Doing some cleaning...");
+                Thread.Sleep(1000);
+                //File.Delete(tempFile);
             }
-
-
 
         }
 

