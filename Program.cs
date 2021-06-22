@@ -162,7 +162,7 @@ namespace Sharperner
                              .ToArray();
         }
 
-        public static string GetRandomIV()
+        public static byte[] GetRandomIV()
         {
             byte[] iv = new byte[16];
 
@@ -180,10 +180,10 @@ namespace Sharperner
             //    }
             //}
             //return IVStr.ToString();
-            return Convert.ToBase64String(iv);
+            return iv;
         }
 
-        public static string GetRandomKey()
+        public static byte[] GetRandomKey()
         {
             byte[] key = new byte[32];
 
@@ -201,7 +201,7 @@ namespace Sharperner
             //    }
             //}
             //return IVStr.ToString();
-            return Convert.ToBase64String(key);
+            return key;
         }
 
         public static void banner()
@@ -245,8 +245,8 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
             string morsed_aesiv = "";
 
             // generate random aes key and iv
-            string aes_key = GetRandomKey();
-            string aes_iv = GetRandomIV();
+            string aes_key = Convert.ToBase64String(GetRandomKey());
+            string aes_iv = Convert.ToBase64String(GetRandomIV());
 
             banner();
 
@@ -303,6 +303,15 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                             Environment.Exit(0);
                         }
 
+                        if (arguments.ContainsKey("/key"))
+                        {
+                            xorKey = arguments["/key"];
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[+] No /key supplied. Using the default key: {xorKey}");
+                        }
+
                         // XOR
                         byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
 
@@ -314,9 +323,6 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                         morsed_aesiv = MorseForFun.Send(aes_iv);
                         xorKey = MorseForFun.Send(xorKey);
 
-                        //Console.WriteLine($"Sending morse which is here: {MorseForFun.Send(xorAesEncStringB64)}");
-                        //Console.WriteLine($"Sending morse which is here: {MorseForFun.Receive(MorseForFun.Send(xorAesEncStringB64))}");
-
                         Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
                     }
                     catch
@@ -324,15 +330,6 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                         Console.WriteLine("[!] Error encrypting");
                     }
 
-                }
-
-                if (arguments.ContainsKey("/key"))
-                {
-                     xorKey = arguments["/key"];
-                }
-                else
-                {
-                    Console.WriteLine($"[+] No /key supplied. Using the default key: {xorKey}");
                 }
 
                 if(arguments.ContainsKey("/out"))
@@ -345,7 +342,9 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 }
                 else
                 {
-                    outputFile = "Excel.exe";
+                    // choose either one of these
+                    string[] fileName = { "production.exe","release.exe","Release_x64.exe","prod.exe","config.exe","buildGradle.exe","build.exe" };
+                    outputFile = fileName[random.Next(fileName.Length)];
                 }
 
                 //https://stackoverflow.com/questions/5036590/how-to-retrieve-certificates-from-a-pfx-file-with-c
@@ -385,7 +384,7 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                     WebClient client = new WebClient();
                     try
                     {
-                        templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/template.cs");
+                        templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs");
                     }
                     catch
                     {
@@ -426,7 +425,7 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
 
                 Console.WriteLine($"[+] Doing some cleaning...");
                 Thread.Sleep(1000);
-                File.Delete(tempFile);
+                //File.Delete(tempFile);
             }
 
         }
