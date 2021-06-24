@@ -251,7 +251,7 @@ by @ch4rm with <3
 
 Example:
 Sharperner.exe /file:file.txt /type:cpp
-Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
+Sharperner.exe /file:file.txt /out:payload.exe
 ";
             Console.WriteLine(help);
         }
@@ -480,9 +480,6 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 else if(dropperFormat == "cpp")
                 {
                     // locate the file
-                    Console.WriteLine(GetJuggledLetters(18));
-                    Console.WriteLine(MorseForFun.Receive(xorKey));
-
                     var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
 
                     if (directory == null)
