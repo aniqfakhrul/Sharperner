@@ -1,0 +1,18 @@
+﻿  Assembling lowstubs.asm...
+  aes.c
+  low.c
+  base64.cpp
+  loader.cpp
+C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\loader.cpp(74,22): warning C4101: 'hThread': unreferenced local variable
+C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\loader.cpp(74,12): warning C4101: 'hProcess': unreferenced local variable
+C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\loader.cpp(116,14): warning C4101: 'status': unreferenced local variable
+C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\loader.cpp(115,12): warning C4101: 'hProcess': unreferenced local variable
+C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\loader.cpp(193,11): warning C4101: 'bytesWritten': unreferenced local variable
+C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\loader.cpp(192,11): warning C4101: 'pid': unreferenced local variable
+C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\loader.cpp(311,72): warning C4267: 'argument': conversion from 'size_t' to 'uint32_t', possible loss of data
+  Generating code
+  Finished generating code
+  4 of 413 functions ( 1.0%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  loader.vcxproj -> C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\x64\Release\loader.exe

@@ -3,28 +3,25 @@
 
 ![](./src/images/scan.PNG)
 
-### Functionalities
+### Features
 * Support multiple shellcode input
 * AES + XOR encrypted shellcode
 * APC Process Injection (explorer.exe)
+* Process Hollowing + PPID Spoofing
 * Random generated AES key and iv
 * Final Shellcode, Key and IV are translated to morse code :)
 
 ### Usage
 ```
-/file         B64 shellcode file
+/file       B64,hex,raw shellcode
+/type       cs,cpp
 /key        XOR Key (Optional)
 /out        Output file Location (Optional)
 
 Example:
-Sharperner.exe /file:file.txt
+Sharperner.exe /file:file.txt /type:cpp
 Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
 ```
-
-### To-do
-* Implement c++ dropper
-* Implement direct syscalls
-* Process Hollowing, PID spoofing
 
 ### Suggestion
 To avoid touching the disk, Generated .NET executable can be loaded reflectively with powershell. AMSI is the enemy now, [amsi.fail](https://amsi.fail) ftw!

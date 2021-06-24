@@ -1,0 +1,7 @@
+C:\Users\REUSER\source\repos\ObfuscatorXOR\bin\Debug\ObfuscatorXOR.exe.config
+C:\Users\REUSER\source\repos\ObfuscatorXOR\bin\Debug\ObfuscatorXOR.exe
+C:\Users\REUSER\source\repos\ObfuscatorXOR\bin\Debug\ObfuscatorXOR.pdb
+C:\Users\REUSER\source\repos\ObfuscatorXOR\obj\Debug\ObfuscatorXOR.csprojAssemblyReference.cache
+C:\Users\REUSER\source\repos\ObfuscatorXOR\obj\Debug\ObfuscatorXOR.csproj.CoreCompileInputs.cache
+C:\Users\REUSER\source\repos\ObfuscatorXOR\obj\Debug\ObfuscatorXOR.exe
+C:\Users\REUSER\source\repos\ObfuscatorXOR\obj\Debug\ObfuscatorXOR.pdb
