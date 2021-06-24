@@ -94,6 +94,14 @@ namespace Sharperner
         }
 
         private static Random random = new Random();
+
+        public static string GetJuggledLetters(int length)
+        {
+            const string chars = "ABCDE!+FGHIJKLMNOPQRSTUVWXY!+Zabcdefghijklmnopqrs!+tuvwxyz0123456789!+";
+            return new string(Enumerable.Repeat(chars, length)
+              .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
         public static string RandomKey(int length)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -252,7 +260,7 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
         static void Main(string[] args)
         {
             string base64String = "";
-            string xorKey = "Sup3rS3cur3K3yfTw!";
+            string xorKey = GetJuggledLetters(18);
             string xorAesEncStringB64 = "";
             string rawB64Output = "";
             byte[] rawSh3lLc0d3 = new byte[] { };
@@ -331,14 +339,9 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                             Environment.Exit(0);
                         }
 
-                        if (arguments.ContainsKey("/key"))
-                        {
-                            xorKey = arguments["/key"];
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[+] No /key supplied. Using the default key: {xorKey}");
-                        }
+
+                        Console.WriteLine($"[+] XOR encode shellcode with key: {xorKey}");
+
                         // XOR
                         byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
 
@@ -478,6 +481,8 @@ Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
                 else if(dropperFormat == "cpp")
                 {
                     // locate the file
+                    Console.WriteLine(GetJuggledLetters(18));
+                    Console.WriteLine(MorseForFun.Receive(xorKey));
 
                     var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
 
