@@ -146,7 +146,7 @@ int main()
     morsed = "REPLACE SHELLCODE HERE";
     morsedb64a3skey = "REPLACE A3S_KEY";
     morsedb64a3siv = "REPLACE A3S_IV";
-    morsedxorKey = "^... ..- .--. ...-- .-. ^... ...-- -.-. ..- .-. ...-- ^-.- ...-- -.-- ..-. ^- .-- ^..^ ";
+    morsedxorKey = "REPLACE XORKEY";
 
     //translate all sumarine language
     sh3llc0de = translate_morse(morsed);
