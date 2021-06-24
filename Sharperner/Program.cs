@@ -247,7 +247,6 @@ by @ch4rm with <3
             string help = @"
 /file       B64,hex,raw
 /type       cs,cpp
-/key        XOR Key (Optional)
 /out        Output file Location (Optional)
 
 Example:
