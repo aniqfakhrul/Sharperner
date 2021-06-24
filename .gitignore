@@ -2,13 +2,14 @@
 loader/.git
 loader/.vs
 loader/*.user
-loader/[Dd]ebug/
-loader/[Rr]elease/
 loader/[Bb]in/
 loader/[Oo]bject/
+loader/loader/
+loader/x64/
 Sharperner/.vs
 Sharperner/*.user
 Sharperner/[Dd]ebug/
 Sharperner/[Rr]elease/
 Sharperner/[Bb]in/
 Sharperner/[Oo]bject/
+Sharperner_portable/

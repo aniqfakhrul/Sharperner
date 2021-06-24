@@ -1,6 +1,0 @@
-﻿  Assembling lowstubs.asm...
-  Generating code
-  Finished generating code
-  Previous IPDB not found, fall back to full compilation.
-  All 413 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  loader.vcxproj -> C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\x64\Release\loader.exe
