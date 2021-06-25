@@ -15,12 +15,11 @@
 ```
 /file       B64,hex,raw shellcode
 /type       cs,cpp
-/key        XOR Key (Optional)
 /out        Output file Location (Optional)
 
 Example:
 Sharperner.exe /file:file.txt /type:cpp
-Sharperner.exe /file:file.txt /key:'l0v3151nth3a1ry000www' /out:payload.exe
+Sharperner.exe /file:file.txt /out:payload.exe
 ```
 
 ### Suggestion
