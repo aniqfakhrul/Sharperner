@@ -522,7 +522,7 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     Console.WriteLine($"[+] Doing some cleaning...");
                     Thread.Sleep(1000);
 
-                    //File.Delete(tempFile);
+                    File.Delete(tempFile);
                 }
                 else if(dropperFormat == "cpp")
                 {
