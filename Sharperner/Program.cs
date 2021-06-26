@@ -576,7 +576,7 @@ Sharperner.exe /file:file.txt /out:payload.exe
                         //randomize variable names
                         string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
                                                     "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
-                                                    "translated", "lines", "delim", "ascii_to_morse"};
+                                                    "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc"};
 
                         foreach (string variableName in variableNames)
                         {
