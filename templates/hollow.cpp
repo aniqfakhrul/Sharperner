@@ -30,7 +30,7 @@ void tokenize(std::string const& str, const char delim,
 
 string translate_morse(string morsed)
 {
-    string decoded;
+    string translated;
 
     //morse to ascii
     std::vector<std::string> lines;
@@ -39,11 +39,11 @@ string translate_morse(string morsed)
         for (auto it = ascii_to_morse.rbegin(); it != ascii_to_morse.rend(); it++) {
             if (lines[s] == it->second)
             {
-                decoded.push_back(it->first);
+                translated.push_back(it->first);
             }
         }
     }
-    return decoded;
+    return translated;
 }
 
 // This is just directly stolen from ired.team
