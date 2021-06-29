@@ -1,4 +1,5 @@
 .vs
+Sharperner.sln
 loader/.git
 loader/.vs
 loader/*.user
@@ -6,6 +7,18 @@ loader/[Bb]in/
 loader/[Oo]bject/
 loader/loader/
 loader/x64/
+DInvoke/.vs
+DInvoke/*.user
+DInvoke/[Bb]in/
+DInvoke/[Oo]bject/
+NativeBinaryLoader/
+NativeBinaryLoader/.git
+NativeBinaryLoader/.vs
+NativeBinaryLoader/*.user
+NativeBinaryLoader/[Bb]in/
+NativeBinaryLoader/[Oo]bject/
+NativeBinaryLoader/loader/
+NativeBinaryLoader/x64/
 Sharperner/.vs
 Sharperner/*.user
 Sharperner/[Dd]ebug/

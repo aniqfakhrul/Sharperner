@@ -12,3 +12,5 @@ C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Debug\Sharperner.cspro
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Debug\Sharperner.exe
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Debug\Sharperner.pdb
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Debug\Sharperner.csprojAssemblyReference.cache
+C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\bin\Debug\DInvoke.dll
+C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Debug\Sharperner.csproj.CopyComplete

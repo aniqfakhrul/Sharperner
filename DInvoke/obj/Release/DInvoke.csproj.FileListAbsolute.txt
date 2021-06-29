@@ -1,0 +1,6 @@
+C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\bin\Release\DInvoke.exe.config
+C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\bin\Release\DInvoke.exe
+C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\bin\Release\DInvoke.pdb
+C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\obj\Release\DInvoke.csproj.CoreCompileInputs.cache
+C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\obj\Release\DInvoke.exe
+C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\obj\Release\DInvoke.pdb

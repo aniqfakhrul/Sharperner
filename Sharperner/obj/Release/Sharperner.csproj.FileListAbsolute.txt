@@ -1,7 +1,7 @@
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\bin\Release\Sharperner.exe.config
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\bin\Release\Sharperner.exe
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\bin\Release\Sharperner.pdb
-C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Release\Sharperner.exe
-C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Release\Sharperner.pdb
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Release\Sharperner.csprojAssemblyReference.cache
 C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Release\Sharperner.csproj.CoreCompileInputs.cache
+C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Release\Sharperner.exe
+C:\Users\REUSER\source\repos\ObfuscatorXOR\Sharperner\obj\Release\Sharperner.pdb

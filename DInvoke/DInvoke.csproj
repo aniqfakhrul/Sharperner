@@ -4,15 +4,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{63FCAA07-43F5-4BFA-8427-D2863D792200}</ProjectGuid>
+    <ProjectGuid>{88DDFE5F-98B2-42BB-A8E7-1FDA5C9ED498}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Sharperner</RootNamespace>
-    <AssemblyName>Sharperner</AssemblyName>
+    <RootNamespace>DInvoke</RootNamespace>
+    <AssemblyName>DInvoke</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -32,13 +30,6 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
-  </PropertyGroup>
-  <PropertyGroup>
-    <AssemblyOriginatorKeyFile>
-    </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -71,12 +62,21 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Execution\DynamicInvoke\Generic.cs" />
+    <Compile Include="Execution\DynamicInvoke\Native.cs" />
+    <Compile Include="Execution\ManualMap\Map.cs" />
+    <Compile Include="Execution\Native.cs" />
+    <Compile Include="Execution\PE.cs" />
+    <Compile Include="Execution\PlatformInvoke\Win32.cs" />
+    <Compile Include="Execution\Win32.cs" />
+    <Compile Include="Misc\Helpers.cs" />
+    <Compile Include="Misc\Unzip.cs" />
+    <Compile Include="Misc\Utilities.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
