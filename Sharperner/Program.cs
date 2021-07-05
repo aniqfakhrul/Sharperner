@@ -386,6 +386,8 @@ namespace Sharperner
 
     class Program
     {
+        static WebClient webClient = new WebClient();
+
         public static byte[] Decompress(byte[] data)
         {
             MemoryStream input = new MemoryStream(data);
@@ -606,13 +608,15 @@ by @ch4rm with <3
             string help = @"
 /file       B64,hex,raw 
 /type       cs,cpp
-/out        Output file Location (Optional)
-/convert    File input. Embed PE to .NET Assembly using Manual Mapping
+/out        Output file Location. (Optional)
+/save       Keep pre compiled code. (Optional)
+/convert    File input
+            (Embed Native executable to .NET Assembly using Manual Mapping)
 
 Example:
 Sharperner.exe /file:file.txt /type:cpp
-Sharperner.exe /file:file.txt /out:payload.exe
-Sharperner.exe /convert:pe.exe
+Sharperner.exe /file:file.txt /out:payload.exe /save
+Sharperner.exe /convert:file.exe
 ";
             Console.WriteLine(help);
         }
@@ -787,11 +791,13 @@ Sharperner.exe /convert:pe.exe
 
                         var templateFile = Path.Combine(parentDir, @"templates\template.cs");
 
-                        var tempFile = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
+                        var tempFile = Path.Combine(Directory.GetCurrentDirectory(), "payload.cs");
 
                         string templateFileContent = "";
 
                         var cscPath = $"\"C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe\"";
+
+                        var templateUrl = "https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs";
 
                         if (File.Exists(cscPath))
                         {
@@ -803,17 +809,31 @@ Sharperner.exe /convert:pe.exe
                             if (!File.Exists(templateFile)) //if file exists
                             {
                                 Console.WriteLine("[!] File does not exists in local, fetching online...");
+                                // @Arno0x
+                                IWebProxy defaultProxy = WebRequest.DefaultWebProxy;
+                                if (defaultProxy != null)
+                                {
+                                    defaultProxy.Credentials = CredentialCache.DefaultCredentials;
+                                    webClient.Proxy = defaultProxy;
+                                }
+
+                                //TLS / SSL fix for old Net WebClient
+                                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+
+                                //headers needed for the github API to answer back
+                                webClient.Headers.Set("User-Agent", "request");
+
                                 ServicePointManager.Expect100Continue = true;
                                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                                WebClient client = new WebClient();
+
                                 try
                                 {
-                                    templateFileContent = client.DownloadString("https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs");
+                                    templateFileContent = webClient.DownloadString(templateUrl);
                                 }
                                 catch
                                 {
-                                    Console.WriteLine("[!] No internet connection");
-                                    Environment.Exit(0);
+                                    Console.WriteLine($"[!] Can't connect to {templateUrl}. Check your connection");
+                                    return;
                                 }
                             }
                             else
@@ -839,15 +859,17 @@ Sharperner.exe /convert:pe.exe
                                 }
 
                                 //randomize variable names
-                                string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo",
+                                
+                                string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo", "written", "rahsia",
                                                 "pHandle", "rMemAddress", "tHandle", "ptr", "theKey", "mixed", "input", "theKeystring", "cipherText", "rawKey", "rawIV", "rijAlg", "decryptor",
                                                 "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "cs", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
-                                                "random", "aes_key", "aes_iv", "stringBuilder"};
+                                                "random", "aes_key", "aes_iv", "stringBuilder", "resultBool"};
 
                                 foreach (string variableName in variableNames)
                                 {
                                     templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
                                 }
+                                
 
                                 // replace in template file
                                 templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
@@ -863,15 +885,38 @@ Sharperner.exe /convert:pe.exe
                             {
                                 Console.WriteLine("[+] Writing shellcode to template file...");
                                 File.WriteAllText(tempFile, templateFileContent);
+
+                                if (arguments.ContainsKey("/save"))
+                                {
+                                    var preCompiledCode = Path.Combine(Directory.GetCurrentDirectory(), "output.cs");
+
+                                    File.WriteAllText(preCompiledCode, templateFileContent);
+
+                                    Console.WriteLine($"[+] Pre compiled code generated => {Path.GetFileName(preCompiledCode)}");
+                                }
+
                             }
                             catch (Exception err)
                             {
                                 Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
                             }
 
-                            Compile.CompileAssembly(cscPath, outputFile, tempFile);
+                            try
+                            {
 
-                            Thread.Sleep(1000);
+                                Console.WriteLine($"[+] Compiling code...");
+
+                                Compile.CompileAssembly(cscPath, outputFile, tempFile);
+
+                                Thread.Sleep(1000);
+
+                            }
+                            catch (Exception err)
+                            {
+                                Console.WriteLine($"[!] Error Compiling with the following error => {err.Message}");
+                                Environment.Exit(0);
+                            }
+
 
                             if (File.Exists(outputFile))
                             {
@@ -962,7 +1007,18 @@ Sharperner.exe /convert:pe.exe
                         try
                         {
                             Console.WriteLine("[+] Writing shellcode to template file...");
+
                             File.WriteAllText(rootFile, templateFileContent);
+
+                            if (arguments.ContainsKey("/save"))
+                            {
+                                var preCompiledCode = Path.Combine(Directory.GetCurrentDirectory(), "output.cpp");
+
+                                File.WriteAllText(preCompiledCode, templateFileContent);
+
+                                Console.WriteLine($"[+] Pre compiled code generated => {Path.GetFileName(preCompiledCode)}");
+                            }
+
                         }
                         catch (Exception err)
                         {
@@ -984,26 +1040,19 @@ Sharperner.exe /convert:pe.exe
                             try
                             {
 
-                                try
-                                {
-                                    Console.WriteLine($"[+] Compiling native C++ binary...");
+                                Console.WriteLine($"[+] Compiling native C++ binary...");
 
-                                    Compile.CompileWithMSBuild(msBuildPath, slnFile, "loader");
-                                }
-                                catch
-                                {
-                                    Console.WriteLine("[!] Error compiling. Exiting...");
-                                    Environment.Exit(0);
-                                }
+                                Compile.CompileWithMSBuild(msBuildPath, slnFile, "loader");
+
+                                //wait for it to compile
+                                Thread.Sleep(4000);
+
                             }
                             catch (Exception err)
                             {
-                                Console.WriteLine($"[!] {err.Message}");
+                                Console.WriteLine($"[!] Error Compiling with the following error => {err.Message}");
                                 Environment.Exit(0);
                             }
-
-                            //wait for it to compile
-                            Thread.Sleep(4000);
 
                             try
                             {
@@ -1041,9 +1090,11 @@ Sharperner.exe /convert:pe.exe
 
                                 //revert loader
                                 File.WriteAllText(rootFile, temp);
-                                File.Delete(loaderExecutableFilePath);
 
                                 Thread.Sleep(1000);
+
+                                File.Delete(loaderExecutableFilePath);
+
                             }
                             catch
                             {
@@ -1059,7 +1110,7 @@ Sharperner.exe /convert:pe.exe
             }
             else if (arguments.ContainsKey("/convert"))
             {
-                if (arguments.ContainsKey("/file") || arguments.ContainsKey("/type"))
+                if (arguments.ContainsKey("/file") || arguments.ContainsKey("/type") || arguments.ContainsKey("/save"))
                 {
                     Console.WriteLine("[!] Other arguments can't be used with /convert");
                 }

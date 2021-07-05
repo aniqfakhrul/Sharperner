@@ -11,14 +11,6 @@ DInvoke/.vs
 DInvoke/*.user
 DInvoke/[Bb]in/
 DInvoke/[Oo]bject/
-NativeBinaryLoader/
-NativeBinaryLoader/.git
-NativeBinaryLoader/.vs
-NativeBinaryLoader/*.user
-NativeBinaryLoader/[Bb]in/
-NativeBinaryLoader/[Oo]bject/
-NativeBinaryLoader/loader/
-NativeBinaryLoader/x64/
 Sharperner/.vs
 Sharperner/*.user
 Sharperner/[Dd]ebug/
@@ -27,4 +19,3 @@ Sharperner/[Bb]in/
 Sharperner/[Oo]bject/
 Sharperner_portable/
 DllInject/
-PELoader/

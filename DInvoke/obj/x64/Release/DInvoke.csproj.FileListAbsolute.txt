@@ -5,3 +5,10 @@ C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.cspro
 C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.csproj.CoreCompileInputs.cache
 C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.exe
 C:\Users\REUSER\source\repos\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.pdb
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\DInvoke\bin\x64\Release\DInvoke.exe.config
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\DInvoke\bin\x64\Release\DInvoke.exe
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\DInvoke\bin\x64\Release\DInvoke.pdb
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.csproj.AssemblyReference.cache
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.csproj.CoreCompileInputs.cache
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.exe
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\DInvoke\obj\x64\Release\DInvoke.pdb
