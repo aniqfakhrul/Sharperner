@@ -54,3 +54,6 @@ $assem = [System.Reflection.Assembly]::Load($data)
 ```
 
 ## References
+* https://github.com/cobbr/SharpSploit
+* https://github.com/fireeye/DueDLLigence
+* https://github.com/cribdragg3r/Alaris
