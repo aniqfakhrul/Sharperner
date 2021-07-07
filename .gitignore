@@ -6,6 +6,7 @@ loader/*.user
 loader/[Bb]in/
 loader/[Oo]bject/
 loader/loader/
+loader/[Rr]elease/
 loader/x64/
 DInvoke/.vs
 DInvoke/*.user
@@ -22,4 +23,3 @@ Sharperner/[Rr]elease/
 Sharperner/[Bb]in/
 Sharperner/[Oo]bject/
 Sharperner_portable/
-DllInject/
