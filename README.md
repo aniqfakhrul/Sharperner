@@ -43,7 +43,7 @@ Sharperner.exe /convert:file.exe
 ## Caveat
 * Install .NET 3.5 if Dlllauncher project throws errors. ([Download](https://www.microsoft.com/en-us/download/details.aspx?id=21))
 * Make sure to have `msbuild.exe` in place to compile projects
-* Native C++ payload might not work with long shellcode. Stageless likely won't work.
+* Native C++ payload might not work with long shellcode. Stageless most likely won't work.
 
 ## Suggestion
 To avoid touching the disk, Generated .NET executable can be loaded reflectively with powershell. AMSI is the enemy now, [amsi.fail](https://amsi.fail) ftw!
