@@ -329,33 +329,42 @@ namespace Sharperner
 
     public static class Compile
     {
-        public static void CompileWithMSBuild(string msBuildPath, string projFile, string projectName, string platform)
+        public static bool CompileWithMSBuild(string msBuildPath, string projFile, string projectName, string platform)
         {
-            var executablePath = $"\"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\"";
-
-            if(string.IsNullOrEmpty(executablePath) || !executablePath.Contains("MSBuild.exe"))
+            try
             {
-                Console.WriteLine("[!] MSBuild.exe executable not found in path");
-                Environment.Exit(0);
+                var executablePath = $"\"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\"";
+
+                if (string.IsNullOrEmpty(executablePath) || !executablePath.Contains("MSBuild.exe"))
+                {
+                    Console.WriteLine("[!] MSBuild.exe executable not found in path");
+                    Environment.Exit(0);
+                }
+
+                var strCmd = $"/c {executablePath} {projFile} /p:Configuration=Release /p:Platform={platform}";
+
+                using (Process compiler = new Process())
+                {
+                    compiler.StartInfo.FileName = @"CMD.exe";
+                    compiler.StartInfo.Arguments = strCmd;
+                    compiler.StartInfo.UseShellExecute = false;
+                    compiler.StartInfo.CreateNoWindow = false;
+                    compiler.StartInfo.RedirectStandardError = true;
+                    compiler.StartInfo.RedirectStandardOutput = true;
+                    compiler.Start();
+                    compiler.WaitForExit();
+
+                }
+                return true;
             }
-
-            var strCmd = $"/c {executablePath} {projFile} /p:Configuration=Release /p:Platform={platform}";
-
-            using (Process compiler = new Process())
+            catch
             {
-                compiler.StartInfo.FileName = @"CMD.exe";
-                compiler.StartInfo.Arguments = strCmd;
-                compiler.StartInfo.UseShellExecute = false;
-                compiler.StartInfo.CreateNoWindow = false;
-                compiler.StartInfo.RedirectStandardError = true;
-                compiler.StartInfo.RedirectStandardOutput = true;
-                compiler.Start();
-                compiler.WaitForExit();
-
+                return false;
             }
+            
         }
 
-        public static void CompileAssembly(string cscPath, string outputFile, string tempFile)
+        public static bool CompileAssembly(string cscPath, string outputFile, string tempFile)
         {
             //compile the code
             //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standarderror?redirectedfrom=MSDN&view=net-5.0#System_Diagnostics_Process_StandardError
@@ -379,10 +388,12 @@ namespace Sharperner
 
                 process.WaitForExit();
 
+                return true;
             }
             catch (Exception err)
             {
                 Console.WriteLine($"[!] Error compiling template file with the following error {err.Message}");
+                return false;
             }
         }
     }
@@ -914,11 +925,19 @@ Sharperner.exe /convert:file.exe
                             try
                             {
 
-                                Console.WriteLine($"[+] Compiling code...");
+                                Console.Write($"[+] Compiling code...");
 
-                                Compile.CompileAssembly(cscPath, outputFile, tempFile);
+                                if(Compile.CompileAssembly(cscPath, outputFile, tempFile))
+                                {
+                                    Console.Write("  OK!\n");
+                                    
+                                    Thread.Sleep(1000);
+                                }
+                                else
+                                {
+                                    return;
+                                }
 
-                                Thread.Sleep(1000);
 
                             }
                             catch (Exception err)
@@ -1066,12 +1085,20 @@ Sharperner.exe /convert:file.exe
                             try
                             {
 
-                                Console.WriteLine($"[+] Compiling native C++ binary...");
+                                Console.Write($"[+] Compiling native C++ binary...");
 
-                                Compile.CompileWithMSBuild(msBuildPath, projFile, "loader","x64");
+                                if (Compile.CompileWithMSBuild(msBuildPath, projFile, "loader", "x64"))
+                                {
+                                    Console.Write("  OK!\n");
 
-                                //wait for it to compile
-                                Thread.Sleep(2000);
+                                    //wait for it to compile
+                                    Thread.Sleep(2000);
+                                }
+                                else
+                                {
+                                    return;
+                                }
+
 
                             }
                             catch (Exception err)
@@ -1228,12 +1255,20 @@ Sharperner.exe /convert:file.exe
                             try
                             {
 
-                                Console.WriteLine($"[+] Compiling dll...");
+                                Console.Write($"[+] Compiling dll...");
 
-                                Compile.CompileWithMSBuild(msBuildPath, projFile, "Dlllauncher", "x64");
+                                if (Compile.CompileWithMSBuild(msBuildPath, projFile, "Dlllauncher", "x64"))
+                                {
+                                    Console.Write("  OK!\n");
 
-                                //wait for it to compile
-                                Thread.Sleep(2000);
+                                    //wait for it to compile
+                                    Thread.Sleep(2000);
+                                }
+                                else
+                                {
+                                    return;
+                                }
+
 
                             }
                             catch (Exception err)
@@ -1260,6 +1295,8 @@ Sharperner.exe /convert:file.exe
                                     File.Copy(dllFilePath, currentDirOutputFile, true);
                                         
                                     Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+
+                                    Console.WriteLine($"[+] Execute dll with: msiexec.exe /z /path/to/payload.dll");
 
                                 }
                                 catch
@@ -1387,9 +1424,18 @@ Sharperner.exe /convert:file.exe
                                     {
                                         File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
 
-                                        Compile.CompileWithMSBuild(msBuildPath, projFile, "DInvoke", "x64");
+                                        Console.Write("[+] Compiling...");
 
-                                        Thread.Sleep(2000);
+                                        if (Compile.CompileWithMSBuild(msBuildPath, projFile, "DInvoke", "x64"))
+                                        {
+                                            Console.Write("  OK!\n");
+
+                                            Thread.Sleep(2000);
+                                        }
+                                        else
+                                        {
+                                            return;
+                                        }
 
                                         var currentDirOutputFile = $"{Directory.GetCurrentDirectory()}\\{outputFile}";
 
