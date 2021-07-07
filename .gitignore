@@ -11,6 +11,10 @@ DInvoke/.vs
 DInvoke/*.user
 DInvoke/[Bb]in/
 DInvoke/[Oo]bject/
+Dlllauncher/.vs
+Dlllauncher/*.user
+Dlllauncher/[Bb]in/
+Dlllauncher/[Oo]bject/
 Sharperner/.vs
 Sharperner/*.user
 Sharperner/[Dd]ebug/

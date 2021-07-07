@@ -1,0 +1,6 @@
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\Dlllauncher\bin\Debug\Dlllauncher.dll
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\Dlllauncher\bin\Debug\Dlllauncher.pdb
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\Dlllauncher\obj\Debug\Dlllauncher.csproj.AssemblyReference.cache
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\Dlllauncher\obj\Debug\Dlllauncher.csproj.CoreCompileInputs.cache
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\Dlllauncher\obj\Debug\Dlllauncher.dll
+C:\Users\ch4rm\Desktop\ObfuscatorXOR\Dlllauncher\obj\Debug\Dlllauncher.pdb

