@@ -1,8 +1,6 @@
 # Sharperner
 **Sharperner** is a tool written in CSharp that generate .NET dropper with AES and XOR obfuscated shellcode. Generated executable can possibly bypass signature check but I cant be sure it can bypass heuristic scanning. 
 
-![](./src/images/scan.PNG)
-
 ## Features
 ### Native C++ binary
 * Process Hollowing
