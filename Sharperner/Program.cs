@@ -1389,11 +1389,11 @@ Sharperner.exe /convert:file.exe
                     }
                     else
                     {
-                        if (ExeChecker.IsValidExe(filePath))
+                        if (filePath.EndsWith(".exe"))
                         {
-                            if (!filePath.EndsWith(".exe"))
+                            if (!ExeChecker.IsValidExe(filePath)) 
                             {
-                                Console.WriteLine("[!] Invalid extension");
+                                Console.WriteLine("[!] Invalid PE file");
                                 return;
                             }
                             else
@@ -1526,7 +1526,7 @@ Sharperner.exe /convert:file.exe
                         }
                         else
                         {
-                            Console.WriteLine("[+] Invalid PE file");
+                            Console.WriteLine("[!] Invalid extension");
                         }
                     }
 
