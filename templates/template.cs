@@ -149,17 +149,20 @@ namespace TotallyNotMal
 
         private static byte[] xorEncDec(byte[] input, string theKeystring)
         {
+
             byte[] theKey = Encoding.UTF8.GetBytes(theKeystring);
             byte[] mixed = new byte[input.Length];
+
             for (int i = 0; i < input.Length; i++)
             {
-                mixed[i] = (byte)(input[i] ^ theKey[i % theKey.Length]);
+                int length = i % theKey.Length;
+                mixed[i] = (byte)(input[i] ^ theKey[length]);
             }
             return mixed;
         }
 
-        //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
-        public static string DecryptStringFromBytes(byte[] cipherText, byte[] rawKey, byte[] rawIV)
+            //https://raw.githubusercontent.com/smokeme/payloadGenerator/main/xor/template
+            public static string DecryptStringFromBytes(byte[] cipherText, byte[] rawKey, byte[] rawIV)
         {
 
             // Declare the string used to hold
