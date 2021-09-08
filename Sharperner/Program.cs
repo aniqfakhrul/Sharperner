@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 
 namespace Sharperner
 {
+
     [StructLayout(LayoutKind.Sequential)]
     struct IMAGE_DOS_HEADER
     {
@@ -343,6 +344,8 @@ namespace Sharperner
 
                 var strCmd = $"/c {executablePath} {projFile} /p:Configuration=Release /p:Platform={platform}";
 
+                StringBuilder output = new StringBuilder();
+
                 using (Process compiler = new Process())
                 {
 
@@ -353,7 +356,6 @@ namespace Sharperner
                     compiler.StartInfo.RedirectStandardError = true;
                     compiler.StartInfo.RedirectStandardOutput = true;
                     compiler.Start();
-                    StringBuilder output = new StringBuilder();
                     compiler.OutputDataReceived += (sender, a) => output.AppendLine(a.Data);
                     compiler.BeginOutputReadLine();
                     compiler.WaitForExit();
@@ -383,6 +385,7 @@ namespace Sharperner
         {
             //compile the code
             //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standarderror?redirectedfrom=MSDN&view=net-5.0#System_Diagnostics_Process_StandardError
+            StringBuilder output = new StringBuilder();
 
             string strCmd = $"/c \"{cscPath}\" /out:{outputFile} {tempFile}";
             try
@@ -393,6 +396,7 @@ namespace Sharperner
                 process.StartInfo.RedirectStandardOutput = true;
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.RedirectStandardOutput = true;
 
                 // Setup executable and parameters
                 process.StartInfo.FileName = @"CMD.exe";
@@ -400,10 +404,26 @@ namespace Sharperner
 
                 // Go
                 process.Start();
-
+                process.OutputDataReceived += (sender, a) => output.AppendLine(a.Data);
+                process.BeginOutputReadLine();
                 process.WaitForExit();
 
-                return true;
+                var errorOutput = output.ToString().Split(Environment.NewLine.ToCharArray());
+                var errorMsg = errorOutput.Where(x => x.Contains("error"));
+                if (errorMsg.Count() > 0)
+                {
+                    Console.WriteLine($"\n[!] Error compiling with the following errors");
+                    
+                    foreach(string errs in errorMsg)
+                    {
+                        Console.WriteLine($"=> {errs}");
+                    }
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
             }
             catch (Exception err)
             {
@@ -879,6 +899,7 @@ Sharperner.exe /convert:file.exe
 
                             try
                             {
+                                /*
                                 // randomize method names
                                 var pattern = @"(public|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])";
                                 var methodNamesPattern = @"([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()";
@@ -893,12 +914,14 @@ Sharperner.exe /convert:file.exe
                                     }
 
                                 }
+                                */
 
                                 //randomize variable names
                                 
-                                string[] variableNames = { "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo", "written", "rahsia",
+                                string[] variableNames = { "xorEncDec", "DecryptStringFromBytes","AESDecrypt", "pointer", "KecilSaja","virtualAllocEx","createProcess","writeProcessMemory","openThread","virtualProtectEx","queueUserAPC","resumeThread",
+                                                "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo", "written", "rahsia",
                                                 "pHandle", "rMemAddress", "tHandle", "ptr", "theKey", "mixed", "input", "theKeystring", "cipherText", "rawKey", "rawIV", "rijAlg", "decryptor",
-                                                "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "cs", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
+                                                "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
                                                 "random", "aes_key", "aes_iv", "stringBuilder", "resultBool"};
 
                                 foreach (string variableName in variableNames)
