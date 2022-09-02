@@ -656,7 +656,7 @@ by @ch4rm with <3
         {
             string help = @"
 /file       B64,hex,raw 
-/type       cs,cpp,dll
+/format       cs,cpp,dll
 /out        Output file Location. (Optional)
 /save       Keep pre compiled code. (Optional)
 
@@ -664,7 +664,7 @@ by @ch4rm with <3
             (Embed native executable to .NET Assembly using Manual Mapping)
 
 Example:
-Sharperner.exe /file:file.txt /type:cpp
+Sharperner.exe /file:file.txt /format:cpp
 Sharperner.exe /file:file.txt /out:payload.exe /save
 Sharperner.exe /convert:file.exe
 ";
@@ -709,18 +709,26 @@ Sharperner.exe /convert:file.exe
             }
             else if (arguments.ContainsKey("/file"))
             {
-                var dropperFormat = arguments["/type"].ToLower();
-                var allowedFormat = new List<string> { "cs", "cpp", "dll" };
+                var dropperFormat = "";
+                var allowedFormat = new List<string> { };
+                if (arguments.ContainsKey("/format"))
+                {
+                    dropperFormat = arguments["/format"].ToLower();
+                    allowedFormat.Add("cs");
+                    allowedFormat.Add("cpp");
+                    allowedFormat.Add("dll");
+                }
+                else
+                {
+                    Console.WriteLine("[!] Missing /format argument");
+                    return;
+                }
 
-                if (!arguments.ContainsKey("/type"))
+                if (arguments.ContainsKey("/convert"))
                 {
-                    Console.WriteLine("[!] Missing /type argument");
+                    Console.WriteLine("[!] /convert can't be used with /file and /format");
                 }
-                else if (arguments.ContainsKey("/convert"))
-                {
-                    Console.WriteLine("[!] /convert can't be used with /file and /type");
-                }
-                else if (string.IsNullOrEmpty(arguments["/file"]) || string.IsNullOrEmpty(arguments["/type"]))
+                else if (string.IsNullOrEmpty(arguments["/file"]) || string.IsNullOrEmpty(arguments["/format"]))
                 {
                     Console.WriteLine("[!] Empty input file or type");
                 }
@@ -732,7 +740,7 @@ Sharperner.exe /convert:file.exe
                 {
                     filePath = arguments["/file"];
 
-                    if (!File.Exists(filePath)) //if file exists
+                    if (!File.Exists(filePath)) // if file exists
                     {
                         Console.WriteLine("[+] Missing input file");
                         return;
@@ -922,7 +930,7 @@ Sharperner.exe /convert:file.exe
                                                 "xoredAesB64", "xorKey", "aE5k3y", "aE5Iv", "aesEncrypted", "sh3Llc0d3", "lpNumberOfBytesWritten", "processInfo", "written", "rahsia",
                                                 "pHandle", "rMemAddress", "tHandle", "ptr", "theKey", "mixed", "input", "theKeystring", "cipherText", "rawKey", "rawIV", "rijAlg", "decryptor",
                                                 "msDecrypt", "csDecrypt", "srDecrypt", "plaintext", "cipherData", "decryptedData", "ms", "alg", "MorseForFun","startInfo","procInfo", "binaryPath",
-                                                "random", "aes_key", "aes_iv", "stringBuilder", "resultBool"};
+                                                "random", "aes_key", "aes_iv", "stringBuilder", "resultBool", "getETWPayload", "getAMSIPayload", "PatchAMSI", "PatchETW"};
 
                                 foreach (string variableName in variableNames)
                                 {
@@ -1071,7 +1079,7 @@ Sharperner.exe /convert:file.exe
                             //randomize variable names
                             string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
                                                 "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
-                                                "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc"};
+                                                "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc", "patchETW", "patchAMSI", "amsiPatch", "amsiAddr", "amsiAddr_bk", "etwAddr", "etwPatch"};
 
                             foreach (string variableName in variableNames)
                             {
@@ -1393,7 +1401,7 @@ Sharperner.exe /convert:file.exe
             }
             else if (arguments.ContainsKey("/convert"))
             {
-                if (arguments.ContainsKey("/file") || arguments.ContainsKey("/type") || arguments.ContainsKey("/save"))
+                if (arguments.ContainsKey("/file") || arguments.ContainsKey("/format") || arguments.ContainsKey("/save"))
                 {
                     Console.WriteLine("[!] Other arguments can't be used with /convert");
                 }
