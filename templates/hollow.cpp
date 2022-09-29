@@ -321,7 +321,7 @@ void FreshCopy(unsigned char* sKernel32, unsigned char* modulePath, unsigned cha
     hFile = CreateFileA((LPCSTR)modulePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         // failed to open the DLL
-        printf("failed to open ntdll.dll %u", GetLastError());
+        printf("%u", GetLastError());
     }
 
     // prepare file mapping
@@ -330,7 +330,7 @@ void FreshCopy(unsigned char* sKernel32, unsigned char* modulePath, unsigned cha
         // file mapping failed
 
         CloseHandle(hFile);
-        printf("file mapping failed %u", GetLastError());
+        printf("%u", GetLastError());
     }
 
     // map the bastard
@@ -339,7 +339,7 @@ void FreshCopy(unsigned char* sKernel32, unsigned char* modulePath, unsigned cha
         // mapping failed
         CloseHandle(hFileMapping);
         CloseHandle(hFile);
-        printf("mapping failed %u", GetLastError());
+        printf("%u", GetLastError());
     }
 
     // remove hooks
