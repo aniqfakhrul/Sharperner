@@ -1132,10 +1132,13 @@ Sharperner.exe /convert:file.exe
                             }
 
                             //randomize variable names
-                            string[] variableNames = { "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
+                            string[] variableNames = { "a3s_key", "a3s_iv", "strHostname", "oriModulePath", "morsed", "sh3llc0de", "decoded", "b64a3skey", "b64a3siv", "morsedb64a3skey", "morsedb64a3siv", "morsedxorKey", "xorKey",
                                                 "x0rek3y", "ciphertext", "recovered", "policy", "explorer_handle", "hollow_bin", "pid", "bytesWritten", "p_size", "overwrite",
                                                 "translated", "lines", "delim", "ascii_to_morse", "tokenize", "translate_morse", "get_PPID", "howlow_sc", "patchETW", "patchAMSI", "amsiPatch", "amsiAddr", "amsiAddr_bk", "etwAddr", "etwPatch", "patchAMSIOpenSession", "ntdllModule", "ntdllBase", "ntdllFile", "ntdllMapping", "ntdllMappingAddress", "hookedDosHeader", "hookedNtHeader",
-                                                "hookedSectionHeader", "unhook"};
+                                                "hookedSectionHeader", "unhook", "FreshCopy", "CreateFileMappingA_p", "CreateFileMappingA_t", "MapViewOfFile_p", "MapViewOfFile_t", "UnmapViewOfFile_p", "UnmapViewOfFile_t", "VirtualProtect_p",  "VirtualProtect_t", "modulePath", "UnhookModule", "oldprotect", "pishpish", "pinhpinh",
+                                                "GetCurrentProcess_t", "GetCurrentProcess_p", "CreateFileA_t", "CreateFileA_p", "CreateProcessW_t", "CreateProcessW_p", "GetComputerNameA_t", "GetComputerNameA_p", "Process32First_t", "Process32First_p", "Process32Next_t", "Process32Next_p",
+                                                "CreateToolhelp32Snapshot_t", "CreateToolhelp32Snapshot_p", "OpenProcess_t", "OpenProcess_p", "GetCurrentProcess_t", "GetCurrentProcess_p", "WaitForSingleObject_t", "WaitForSingleObject_p", "OldProtect", "GetProcessHeap_t", "GetProcessHeap_p", "pMapping",
+                                                "sCreateFileMappingA","sMapViewOfFile", "sUnmapViewOfFile", "sVirtualProtect", "hFile", "hFileMapping"};
 
                             foreach (string variableName in variableNames)
                             {
